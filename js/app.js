@@ -35,6 +35,20 @@ const DATA = {
   ]
 };
 
+// ---- SEO helpers（避免未定義錯誤 + 動態標題/摘要）----
+function setHead(title, desc){
+  if (title) document.title = title;
+  if (typeof desc === 'string' && desc.length){
+    let m = document.querySelector('meta[name="description"]');
+    if (!m){
+      m = document.createElement('meta');
+      m.setAttribute('name','description');
+      document.head.appendChild(m);
+    }
+    m.setAttribute('content', desc);
+  }
+}
+
 /* -------- Markdown → HTML（標題/粗斜體/連結/清單/行內 code） -------- */
 function mdToHtml(md){
   let h = md.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -52,6 +66,20 @@ function mdToHtml(md){
     })
     .replace(/^(?!<h\d|<ul|<li|<blockquote|<p|<\/)(.+)$/gm,'<p>$1</p>');
   return h;
+}
+
+function afterPostRender(){
+  // KaTeX：\( ... \) 及 $$...$$
+  if (window.renderMathInElement){
+    renderMathInElement(document.querySelector('.prose'), {
+      delimiters: [
+        {left: "$$", right: "$$", display: true},
+        {left: "\\(", right: "\\)", display: false}
+      ]
+    });
+  }
+  // Prism 程式碼高亮
+  if (window.Prism){ Prism.highlightAll(); }
 }
 
 /* -------- Routing -------- */
@@ -336,3 +364,4 @@ async function loadPostBySlug(slug){
 const bust = `?ts=${Date.now()}`;
 const res = await fetch(`blog.index.json${bust}`, { cache: 'no-store' });
 const raw = await fetch(`posts/${hit.file}${bust}`, { cache: 'no-store' }).then(r=>r.text());
+
