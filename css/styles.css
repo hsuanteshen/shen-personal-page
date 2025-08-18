@@ -65,7 +65,13 @@ header{
 footer{ border-top:1px solid var(--stroke); color:var(--muted); padding:2.5rem 0; margin-top:4rem }
 
 /* ========== Hero 背景（照片 + 光暈 + 漸層 + 格線） ========== */
-.hero{ position:relative; overflow:hidden }
+.hero{
+  position: relative;
+  overflow: hidden;
+  min-height: 100svh;         /* 或 100vh */
+  display: flex;
+  flex-direction: column;
+}
 .hero-bg{
   position:absolute; inset:0; z-index:-1;
   background-image:
@@ -84,6 +90,10 @@ footer{ border-top:1px solid var(--stroke); color:var(--muted); padding:2.5rem 0
     repeating-linear-gradient(to bottom, rgba(2,6,23,.045), rgba(2,6,23,.045) 1px, transparent 1px, transparent 32px),
     repeating-linear-gradient(to right,  rgba(2,6,23,.035), rgba(2,6,23,.035) 1px, transparent 1px, transparent 32px);
   mix-blend-mode: multiply;
+}
+
+#app{
+  flex: 1 0 auto;
 }
 
 /* ========== Grid & Cards ========== */
@@ -165,4 +175,5 @@ footer{ border-top:1px solid var(--stroke); color:var(--muted); padding:2.5rem 0
       linear-gradient(180deg,#0F141B 0%,#121820 100%);
     background-blend-mode: soft-light, normal, normal;
   }
+
 }
