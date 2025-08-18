@@ -1,0 +1,31 @@
+name: Build blog index
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "posts/**"
+      - "scripts/build-index.mjs"
+      - ".github/workflows/index.yml"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - run: npm ci || true
+      - run: npm run build:index
+        env:
+          SITE_URL: https://<your-user>.github.io/<your-repo>
+      - name: Commit & Push
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add blog.index.json rss.xml
+            git commit -m "chore: update blog index & rss"
+            git push
+          fi
