@@ -333,3 +333,6 @@ async function loadPostBySlug(slug){
   return { title: hit.title, date: hit.date, body };
 }
 
+const bust = `?ts=${Date.now()}`;
+const res = await fetch(`blog.index.json${bust}`, { cache: 'no-store' });
+const raw = await fetch(`posts/${hit.file}${bust}`, { cache: 'no-store' }).then(r=>r.text());
