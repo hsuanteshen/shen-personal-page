@@ -472,5 +472,3 @@ window.addEventListener('DOMContentLoaded', ()=>{
     console.error(e);
   }
 });
-
-
