@@ -1,0 +1,8 @@
+{
+  "name": "shen-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:index": "node scripts/build-index.mjs"
+  }
+}
