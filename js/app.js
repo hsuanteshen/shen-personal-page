@@ -435,6 +435,25 @@ window.addEventListener('unhandledrejection', (e)=>{
     </section>`;
 });
 
+function showFatal(msg){
+  const host = document.getElementById('app') || document.body;
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `
+    <section class="container py-16">
+      <h1>Runtime error</h1>
+      <pre class="prose" style="white-space:pre-wrap">${msg}</pre>
+      <a class="btn" href="#/">← Back to Home</a>
+    </section>`;
+  host.innerHTML = ""; // 清掉原本內容
+  host.appendChild(wrap.firstElementChild);
+}
+window.addEventListener('error', (e)=>{
+  showFatal((e.error && e.error.stack) || e.message);
+});
+window.addEventListener('unhandledrejection', (e)=>{
+  showFatal(e.reason?.stack || e.reason?.message || String(e.reason));
+});
+
 // ---- boot
 window.addEventListener('hashchange', router);
 window.addEventListener('DOMContentLoaded', ()=>{
@@ -453,4 +472,5 @@ window.addEventListener('DOMContentLoaded', ()=>{
     console.error(e);
   }
 });
+
 
