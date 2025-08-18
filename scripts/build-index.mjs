@@ -1,10 +1,12 @@
-import { readdir, readFile, writeFile } from 'node:fs/promises';
+// scripts/build-index.mjs
+import { readdir, readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
-const POSTS_DIR = 'posts';
-const OUT_INDEX = 'blog.index.json';
-const OUT_RSS = 'rss.xml';
-const SITE_URL = process.env.SITE_URL || 'https://github.com/hsuanteshen/shen-personal-page';
+const POSTS_DIR = process.env.POSTS_DIR || 'posts';
+const OUT_DIR   = process.env.OUTPUT_DIR || '.'; // ← 新增：可指定 'docs'
+const OUT_INDEX = path.join(OUT_DIR, 'blog.index.json');
+const OUT_RSS   = path.join(OUT_DIR, 'rss.xml');
+const SITE_URL  = process.env.SITE_URL || 'https://<your-user>.github.io/<your-repo>';
 
 function parseFrontmatter(text){
   if(text.startsWith('---')){
@@ -28,7 +30,9 @@ function nameToSlugDate(name){
   if(m){ date = `${m[1]}-${m[2]}-${m[3]}`; slug = m[4]; }
   return { slug, date };
 }
-function iso(d){ return new Date(d).toISOString(); }
+const iso = d => new Date(d).toISOString();
+
+await mkdir(OUT_DIR, { recursive: true });
 
 const files = (await readdir(POSTS_DIR)).filter(f=>/\.mdx?$/.test(f));
 const items = [];
