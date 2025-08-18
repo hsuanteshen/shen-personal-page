@@ -92,7 +92,24 @@ function mdToHtml(md){
 }
 
 // ---- DOM refs
-const app = document.getElementById('app');
+// ---- 保險：找不到 #app 也自動建立，避免整頁空白
+function ensureAppRoot(){
+  let el = document.getElementById('app');
+  if (el) return el;
+  const hero = document.querySelector('.hero');
+  el = document.createElement('main');
+  el.id = 'app';
+  el.setAttribute('role','main');
+  if (hero) {
+    // 插到 hero 裡、在 footer 前；沒有 footer 就加在最後
+    const footer = hero.querySelector('footer');
+    hero.insertBefore(el, footer || null);
+  } else {
+    document.body.appendChild(el);
+  }
+  return el;
+}
+const app = ensureAppRoot();
 const nav = document.getElementById('nav');
 
 // ---- Router helpers
@@ -436,3 +453,4 @@ window.addEventListener('DOMContentLoaded', ()=>{
     console.error(e);
   }
 });
+
