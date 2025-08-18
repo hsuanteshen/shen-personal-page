@@ -197,39 +197,53 @@ function renderPapers(){
   `;
 }
 
-function renderBlog(){
+async function renderBlog(){
   setActive('#/blog');
-  app.innerHTML = `
-    <section class="container py-16">
-      <h1>Blog</h1>
-      <div class="list mt-3">
-        ${DATA.blog.map(b=>`
-          <div class="item">
-            <a class="prose" href="#/blog/${b.slug}"><h3 style="margin:0">${b.title}</h3></a>
-            <div class="muted">${new Date(b.date).toLocaleDateString()}</div>
-            ${b.summary?`<p class="muted mt-1" style="max-width:72ch">${b.summary}</p>`:""}
-          </div>`).join('')}
-      </div>
-    </section>
-  `;
+  app.innerHTML = `<section class="container py-16"><h1>Blog</h1><p class="muted">Loading…</p></section>`;
+  try{
+    const posts = await loadPostsIndex();
+    app.innerHTML = `
+      <section class="container py-16">
+        <h1>Blog</h1>
+        <div class="list mt-3">
+          ${posts.map(p=>`
+            <div class="item">
+              <a class="prose" href="#/blog/${p.slug}"><h3 style="margin:0">${p.title}</h3></a>
+              <div class="muted">${p.date ? new Date(p.date).toLocaleDateString() : ''}</div>
+              ${p.summary ? `<p class="muted mt-1" style="max-width:72ch">${p.summary}</p>`:''}
+            </div>
+          `).join('')}
+        </div>
+      </section>
+    `;
+    setHead(`Blog — Shen`, `Posts by Shen`);
+  }catch(e){
+    app.innerHTML = `<section class="container py-16"><h1>Blog</h1><p class="muted">讀取失敗：${e.message}</p></section>`;
+  }
 }
 
-function renderPost(slug){
+async function renderPost(slug){
   setActive('#/blog');
-  const post = DATA.blog.find(p => p.slug===slug);
-  if(!post){ location.hash = '#/blog'; return; }
-  app.innerHTML = `
-    <section class="container py-16">
-      <article class="prose">
-        <h1>${post.title}</h1>
-        <p class="muted">${new Date(post.date).toLocaleDateString()}</p>
-        ${mdToHtml(post.md)}
-      </article>
-      <div class="container" style="max-width:72ch; margin:2rem auto 0; padding:0">
-        <a class="btn" href="#/blog">← Back to Blog</a>
-      </div>
-    </section>
-  `;
+  app.innerHTML = `<section class="container py-16"><h1>Loading…</h1></section>`;
+  try{
+    const post = await loadPostBySlug(slug);
+    app.innerHTML = `
+      <section class="container py-16">
+        <article class="prose">
+          <h1>${post.title}</h1>
+          ${post.date ? `<p class="muted">${new Date(post.date).toLocaleDateString()}</p>`:''}
+          ${mdToHtml(post.body)}
+        </article>
+        <div class="container" style="max-width:72ch; margin:2rem auto 0; padding:0">
+          <a class="btn" href="#/blog">← Back to Blog</a>
+        </div>
+      </section>
+    `;
+    setHead(`${post.title} — Shen`, post.body.replace(/\n+/g,' ').slice(0,150)+'…');
+    afterPostRender(); // 供 KaTeX / Prism 使用（下一步）
+  }catch(e){
+    app.innerHTML = `<section class="container py-16"><h1>Not found</h1><p class="muted">${e.message}</p></section>`;
+  }
 }
 
 /* -------- Helpers：Clock + Parallax（rAF 合併） + Router -------- */
@@ -299,3 +313,23 @@ window.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('y').textContent = new Date().getFullYear();
   router();
 });
+
+let __postsIndex = null;
+
+async function loadPostsIndex(){
+  if(__postsIndex) return __postsIndex;
+  const res = await fetch('blog.index.json', { cache: 'no-store' });
+  if(!res.ok) throw new Error('找不到 blog.index.json');
+  __postsIndex = await res.json();
+  return __postsIndex;
+}
+
+async function loadPostBySlug(slug){
+  const index = await loadPostsIndex();
+  const hit = index.find(p => p.slug === slug);
+  if(!hit) throw new Error('文章不存在');
+  const raw = await fetch(`posts/${hit.file}`, { cache: 'no-store' }).then(r=>r.text());
+  // 直接丟掉 frontmatter（我們列表已取過）
+  const body = raw.replace(/^---[\s\S]*?\n---\s*/,'').trim();
+  return { title: hit.title, date: hit.date, body };
+}
