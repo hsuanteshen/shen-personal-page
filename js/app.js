@@ -318,7 +318,7 @@ let __postsIndex = null;
 
 async function loadPostsIndex(){
   if(__postsIndex) return __postsIndex;
-  const res = await fetch('blog.index.json', { cache: 'no-store' });
+  const res = await fetch(`blog.index.json?ts=${Date.now()}`, { cache: 'no-store' });
   if(!res.ok) throw new Error('找不到 blog.index.json');
   __postsIndex = await res.json();
   return __postsIndex;
@@ -328,8 +328,8 @@ async function loadPostBySlug(slug){
   const index = await loadPostsIndex();
   const hit = index.find(p => p.slug === slug);
   if(!hit) throw new Error('文章不存在');
-  const raw = await fetch(`posts/${hit.file}`, { cache: 'no-store' }).then(r=>r.text());
-  // 直接丟掉 frontmatter（我們列表已取過）
+  const raw = await fetch(`posts/${hit.file}?ts=${Date.now()}`, { cache: 'no-store' }).then(r=>r.text());
   const body = raw.replace(/^---[\s\S]*?\n---\s*/,'').trim();
   return { title: hit.title, date: hit.date, body };
 }
+
