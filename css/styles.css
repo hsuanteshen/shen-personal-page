@@ -73,16 +73,18 @@ footer{ border-top:1px solid var(--stroke); color:var(--muted); padding:2.5rem 0
   flex-direction: column;
 }
 .hero-bg{
-  position:absolute; inset:0; z-index:-1;
+  position: fixed;            /* ← 原本是 absolute，改成 fixed */
+  inset: 0;
+  z-index: -1;                /* 留在內容後面 */
+  pointer-events: none;       /* 不擋滑鼠事件 */
   background-image:
     url('../assets/bg.jpg'),
     radial-gradient(900px 420px at 70% -10%, rgba(124,92,255,.20), transparent 80%),
     linear-gradient(180deg, var(--bg) 0%, var(--bg-sub) 100%);
   background-size: cover, auto, auto;
-  background-position: center center, center center, center center;
+  background-position: center 25%, center center, center center; /* 固定一個你喜歡的焦點，例如 25% */
   background-repeat: no-repeat;
   background-blend-mode: soft-light, normal, normal;
-  transform: translateZ(0);
 }
 .hero-bg::after{
   content:""; position:absolute; inset:0; pointer-events:none;
@@ -177,3 +179,4 @@ footer{ border-top:1px solid var(--stroke); color:var(--muted); padding:2.5rem 0
   }
 
 }
+
