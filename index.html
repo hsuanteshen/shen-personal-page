@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#F6F8FB" />
+<title>Shen — Personal Page</title>
+
+<!-- Fonts: Inter (UI), Newsreader (headings), Noto Sans/Serif TC (CJK fallback) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Newsreader:opsz,wght@6..72,600;6..72,700&family=Noto+Sans+TC:wght@400;600&family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#app">Skip to content</a>
+
+  <div class="hero">
+    <div class="hero-bg" aria-hidden="true"></div>
+
+    <header role="banner">
+      <div class="container nav" aria-label="Primary">
+        <a class="brand" href="#/">Shen</a>
+        <nav id="nav" role="navigation" aria-label="Main">
+          <a href="#/cv">CV</a>
+          <a href="#/projects">Projects</a>
+          <a href="#/papers">Papers</a>
+          <a href="#/blog">Blog</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="app" role="main"></main>
+
+    <footer role="contentinfo">
+      <div class="container muted">© <span id="y"></span> Hsuan-Te, Shen. All rights reserved.</div>
+    </footer>
+  </div>
+
+<script defer src="js/app.js"></script>
+</body>
+</html>
