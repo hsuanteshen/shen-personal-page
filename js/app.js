@@ -1,4 +1,40 @@
-/* -------- Demo data（之後可外部化成 /data/*.json 與 /posts/*.md） -------- */
+/* =========================
+   Safe app.js (drop-in)
+   - 含 setHead / afterPostRender
+   - Blog 讀 blog.index.json（有快取破壞參數）
+   - 全域錯誤護欄：出錯會把錯誤顯示在頁面
+   ========================= */
+
+// ---- SEO helpers
+function setHead(title, desc){
+  if (title) document.title = title;
+  if (typeof desc === 'string' && desc.length){
+    let m = document.querySelector('meta[name="description"]');
+    if (!m){
+      m = document.createElement('meta');
+      m.setAttribute('name','description');
+      document.head.appendChild(m);
+    }
+    m.setAttribute('content', desc);
+  }
+}
+
+// ---- After post render: math + code highlight（可選）
+function afterPostRender(){
+  const root = document.querySelector('.prose');
+  if (!root) return;
+  if (window.renderMathInElement){
+    renderMathInElement(root, {
+      delimiters: [
+        {left: "$$", right: "$$", display: true},
+        {left: "\\(", right: "\\)", display: false}
+      ]
+    });
+  }
+  if (window.Prism){ Prism.highlightAll(); }
+}
+
+// ---- Demo DATA（非 blog，用於 CV / Projects / Papers）
 const DATA = {
   cv: {
     education: [
@@ -19,7 +55,8 @@ const DATA = {
   papers: [
     { title:"A Constructive Closure-Based Proof of a Schur-Type Partition Theorem", year:2025, venue:"Preprint", pdf:"#", doi:null },
   ],
-  blog: [
+  // 提供 fallback：當 blog.index.json 讀不到時會顯示這一則
+  blogFallback: [
     { slug:"hello-world", title:"Hybrid = Editorial × Cinematic", date:"2025-08-18",
       summary:"為什麼首頁用玻璃、內容頁走雜誌式是最佳解。",
       md:`## The Hybrid Principle
@@ -35,21 +72,7 @@ const DATA = {
   ]
 };
 
-// ---- SEO helpers（避免未定義錯誤 + 動態標題/摘要）----
-function setHead(title, desc){
-  if (title) document.title = title;
-  if (typeof desc === 'string' && desc.length){
-    let m = document.querySelector('meta[name="description"]');
-    if (!m){
-      m = document.createElement('meta');
-      m.setAttribute('name','description');
-      document.head.appendChild(m);
-    }
-    m.setAttribute('content', desc);
-  }
-}
-
-/* -------- Markdown → HTML（標題/粗斜體/連結/清單/行內 code） -------- */
+// ---- Markdown → HTML（標題/粗斜體/連結/清單/行內 code）
 function mdToHtml(md){
   let h = md.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   h = h
@@ -68,33 +91,20 @@ function mdToHtml(md){
   return h;
 }
 
-function afterPostRender(){
-  // KaTeX：\( ... \) 及 $$...$$
-  if (window.renderMathInElement){
-    renderMathInElement(document.querySelector('.prose'), {
-      delimiters: [
-        {left: "$$", right: "$$", display: true},
-        {left: "\\(", right: "\\)", display: false}
-      ]
-    });
-  }
-  // Prism 程式碼高亮
-  if (window.Prism){ Prism.highlightAll(); }
-}
-
-/* -------- Routing -------- */
+// ---- DOM refs
 const app = document.getElementById('app');
 const nav = document.getElementById('nav');
 
+// ---- Router helpers
 function setActive(hash){
-  const links = nav.querySelectorAll('a');
+  const links = nav ? nav.querySelectorAll('a') : [];
   links.forEach(a=>{
     const active = a.getAttribute('href')===hash;
     a.setAttribute('aria-current', active ? 'page' : 'false');
   });
 }
 
-/* -------- Pages -------- */
+// ---- Pages
 function renderHome(){
   setActive('#/');
   app.innerHTML = `
@@ -104,7 +114,7 @@ function renderHome(){
           <div class="glass glass-strong card" data-accent>
             <h1>Simplicitas.</h1>
             <p class="muted mt-2" style="max-width:66ch">
-              Hello, this is Shen, and this is my personal page!
+              Hello, this is Shen. (haven't figured out what to write here yet)
             </p>
             <div class="mt-6">
               <a class="btn primary" href="#/projects">Explore Projects</a>
@@ -163,6 +173,7 @@ function renderHome(){
   `;
   startClock();
   initParallax();
+  setHead('Shen — Home','Shen’s personal page: CV, projects, papers, and blog.');
 }
 
 function renderCV(){
@@ -185,6 +196,7 @@ function renderCV(){
       </article>
     </section>
   `;
+  setHead('Shen — CV','Education, publications, awards.');
 }
 
 function renderProjects(){
@@ -202,6 +214,7 @@ function renderProjects(){
       </div>
     </section>
   `;
+  setHead('Shen — Projects','Projects and research directions.');
 }
 
 function renderPapers(){
@@ -223,6 +236,25 @@ function renderPapers(){
       </div>
     </section>
   `;
+  setHead('Shen — Papers','Selected papers & preprints.');
+}
+
+// ---- Blog loader（含快取破壞 & fallback）
+let __postsIndex = null;
+async function loadPostsIndex(){
+  if(__postsIndex) return __postsIndex;
+  const res = await fetch(`blog.index.json?ts=${Date.now()}`, { cache: 'no-store' });
+  if(!res.ok) throw new Error('找不到 blog.index.json');
+  __postsIndex = await res.json();
+  return __postsIndex;
+}
+async function loadPostBySlug(slug){
+  const index = await loadPostsIndex();
+  const hit = index.find(p => p.slug === slug);
+  if(!hit) throw new Error('文章不存在');
+  const raw = await fetch(`posts/${hit.file}?ts=${Date.now()}`, { cache: 'no-store' }).then(r=>r.text());
+  const body = raw.replace(/^---[\s\S]*?\n---\s*/,'').trim();
+  return { title: hit.title, date: hit.date, body };
 }
 
 async function renderBlog(){
@@ -244,9 +276,25 @@ async function renderBlog(){
         </div>
       </section>
     `;
-    setHead(`Blog — Shen`, `Posts by Shen`);
+    setHead('Shen — Blog','Posts by Shen.');
   }catch(e){
-    app.innerHTML = `<section class="container py-16"><h1>Blog</h1><p class="muted">讀取失敗：${e.message}</p></section>`;
+    // fallback：顯示內建示例文章
+    const posts = DATA.blogFallback;
+    app.innerHTML = `
+      <section class="container py-16">
+        <h1>Blog</h1>
+        <p class="muted">讀取索引失敗（${e.message}）。以下為示例文章。</p>
+        <div class="list mt-3">
+          ${posts.map(b=>`
+            <div class="item">
+              <a class="prose" href="#/blog/${b.slug}"><h3 style="margin:0">${b.title}</h3></a>
+              <div class="muted">${new Date(b.date).toLocaleDateString()}</div>
+              ${b.summary?`<p class="muted mt-1" style="max-width:72ch">${b.summary}</p>`:""}
+            </div>`).join('')}
+        </div>
+      </section>
+    `;
+    setHead('Shen — Blog (fallback)','Posts by Shen.');
   }
 }
 
@@ -268,13 +316,28 @@ async function renderPost(slug){
       </section>
     `;
     setHead(`${post.title} — Shen`, post.body.replace(/\n+/g,' ').slice(0,150)+'…');
-    afterPostRender(); // 供 KaTeX / Prism 使用（下一步）
+    afterPostRender();
   }catch(e){
-    app.innerHTML = `<section class="container py-16"><h1>Not found</h1><p class="muted">${e.message}</p></section>`;
+    // fallback：顯示內建文章
+    const b = DATA.blogFallback[0];
+    app.innerHTML = `
+      <section class="container py-16">
+        <article class="prose">
+          <h1>${b.title}</h1>
+          <p class="muted">${new Date(b.date).toLocaleDateString()} — <em>fallback</em></p>
+          ${mdToHtml(b.md)}
+        </article>
+        <div class="container" style="max-width:72ch; margin:2rem auto 0; padding:0">
+          <a class="btn" href="#/blog">← Back to Blog</a>
+        </div>
+      </section>
+    `;
+    setHead(`${b.title} — Shen (fallback)`, b.summary || '');
+    afterPostRender();
   }
 }
 
-/* -------- Helpers：Clock + Parallax（rAF 合併） + Router -------- */
+// ---- Helpers：Clock + Parallax（rAF） + Router
 function startClock(){
   const el = document.getElementById('clock');
   if(!el) return;
@@ -335,33 +398,41 @@ function router(){
   renderHome();
 }
 
-/* boot */
-window.addEventListener('hashchange', router);
-window.addEventListener('DOMContentLoaded', ()=>{
-  document.getElementById('y').textContent = new Date().getFullYear();
-  router();
+// ---- 全域錯誤保護：把錯誤渲染在頁面，避免整頁空白
+window.addEventListener('error', (e)=>{
+  if (!app) return;
+  app.innerHTML = `
+    <section class="container py-16">
+      <h1>Runtime error</h1>
+      <pre class="prose" style="white-space:pre-wrap">${(e.error && e.error.stack) ? e.error.stack : e.message}</pre>
+      <a class="btn" href="#/">← Back to Home</a>
+    </section>`;
+});
+window.addEventListener('unhandledrejection', (e)=>{
+  if (!app) return;
+  app.innerHTML = `
+    <section class="container py-16">
+      <h1>Unhandled promise rejection</h1>
+      <pre class="prose" style="white-space:pre-wrap">${e.reason && (e.reason.stack || e.reason.message) || String(e.reason)}</pre>
+      <a class="btn" href="#/">← Back to Home</a>
+    </section>`;
 });
 
-let __postsIndex = null;
-
-async function loadPostsIndex(){
-  if(__postsIndex) return __postsIndex;
-  const res = await fetch(`blog.index.json?ts=${Date.now()}`, { cache: 'no-store' });
-  if(!res.ok) throw new Error('找不到 blog.index.json');
-  __postsIndex = await res.json();
-  return __postsIndex;
-}
-
-async function loadPostBySlug(slug){
-  const index = await loadPostsIndex();
-  const hit = index.find(p => p.slug === slug);
-  if(!hit) throw new Error('文章不存在');
-  const raw = await fetch(`posts/${hit.file}?ts=${Date.now()}`, { cache: 'no-store' }).then(r=>r.text());
-  const body = raw.replace(/^---[\s\S]*?\n---\s*/,'').trim();
-  return { title: hit.title, date: hit.date, body };
-}
-
-const bust = `?ts=${Date.now()}`;
-const res = await fetch(`blog.index.json${bust}`, { cache: 'no-store' });
-const raw = await fetch(`posts/${hit.file}${bust}`, { cache: 'no-store' }).then(r=>r.text());
-
+// ---- boot
+window.addEventListener('hashchange', router);
+window.addEventListener('DOMContentLoaded', ()=>{
+  try{
+    document.getElementById('y').textContent = new Date().getFullYear();
+    router();
+  }catch(e){
+    // 若初始化就爆，顯示錯誤
+    if (app){
+      app.innerHTML = `
+        <section class="container py-16">
+          <h1>Init error</h1>
+          <pre class="prose" style="white-space:pre-wrap">${e.stack || e.message}</pre>
+        </section>`;
+    }
+    console.error(e);
+  }
+});
