@@ -372,36 +372,15 @@ function initParallax(){
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if(reduce) return;
 
-  let targetX = 0, targetY = 0, scrollY = 0, ticking = false;
-
-  function onMouse(e){
-    const x = (e.clientX / window.innerWidth - 0.5) * 20;
-    const y = (e.clientY / window.innerHeight - 0.5) * 12;
-    targetX = x; targetY = y;
-    requestTick();
+  function move(e){
+    const x = (e.clientX / window.innerWidth - 0.5) * 8; // 比以前小很多
+    bg.style.backgroundPosition =
+      `calc(50% + ${x}px) 25%, center center, center center`; // Y 固定在 25%
   }
-  function onScroll(){
-    scrollY = window.scrollY * 0.08;
-    requestTick();
-  }
-  function requestTick(){
-    if(!ticking){
-      ticking = true;
-      requestAnimationFrame(applyParallax);
-    }
-  }
-  function applyParallax(){
-    bg.style.backgroundPosition = `calc(50% + ${targetX}px) calc(50% + ${targetY}px), center center, center center`;
-    bg.style.transform = `translateY(${scrollY}px)`;
-    ticking = false;
-  }
-
   window.removeEventListener('mousemove', window.__mv);
-  window.removeEventListener('scroll', window.__sc);
-  window.__mv = onMouse; window.__sc = onScroll;
+  window.removeEventListener('scroll', window.__sc); // 重要：不再用滾動移動
+  window.__mv = move;
   window.addEventListener('mousemove', window.__mv);
-  window.addEventListener('scroll', window.__sc);
-  onScroll();
 }
 
 function router(){
@@ -472,3 +451,4 @@ window.addEventListener('DOMContentLoaded', ()=>{
     console.error(e);
   }
 });
+
