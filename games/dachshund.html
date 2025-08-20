@@ -15,7 +15,8 @@
     }
     canvas {
       border: 4px solid #888;
-      background: url('background.png') repeat-x center / cover;
+      /* 路徑改到 assets/dachshund/ */
+      background: url('../assets/dachshund/background.png') repeat-x center / cover;
       image-rendering: pixelated;
     }
   </style>
@@ -35,12 +36,13 @@
     obstacle: new Image()
   };
 
-  images.abiang.src = 'abiang.png';
-  images.baobao.src = 'baobao.png';
-  images.didi.src = 'didi.png';
-  images.bone.src = 'bone.png';
-  images.can.src = 'can.png';
-  images.obstacle.src = 'obstacle.png';
+  // 路徑全部指向 assets/dachshund/
+  images.abiang.src = '../assets/dachshund/abiang.png';
+  images.baobao.src = '../assets/dachshund/baobao.png';
+  images.didi.src = '../assets/dachshund/didi.png';
+  images.bone.src = '../assets/dachshund/bone.png';
+  images.can.src = '../assets/dachshund/can.png';
+  images.obstacle.src = '../assets/dachshund/obstacle.png';
 
   const characters = ['abiang', 'baobao', 'didi'];
   let charIndex = 0;
@@ -49,7 +51,7 @@
   let gameOver = false;
   let paused = false; // ★ P 暫停
   let distanceSinceLastSpawn = 0;
-  const spawnEvery = 400; // 每跑大約 400px 生一個物件（可調）
+  const spawnEvery = 400; // 保留但未使用（你仍用 setInterval）
 
   const groundY = 340;
   let invincibleUntil = 0;
@@ -358,6 +360,7 @@
     lastGroundedTime = Date.now();
   }
 
+  // 保留原本：每秒生成
   setInterval(spawnItem, 1000);
 
   Promise.all(Object.values(images).map(img => new Promise(resolve => {
