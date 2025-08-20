@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dachshund Runner</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #f0f0f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    canvas {
+      border: 4px solid #888;
+      background: url('background.png') repeat-x center / cover;
+      image-rendering: pixelated;
+    }
+  </style>
+</head>
+<body>
+<canvas id="game" width="960" height="540"></canvas>
+<script>
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+
+  const images = {
+    abiang: new Image(),
+    baobao: new Image(),
+    didi: new Image(),
+    bone: new Image(),
+    can: new Image(),
+    obstacle: new Image()
+  };
+
+  images.abiang.src = 'abiang.png';
+  images.baobao.src = 'baobao.png';
+  images.didi.src = 'didi.png';
+  images.bone.src = 'bone.png';
+  images.can.src = 'can.png';
+  images.obstacle.src = 'obstacle.png';
+
+  const characters = ['abiang', 'baobao', 'didi'];
+  let charIndex = 0;
+  let score = 0;
+  let gameSpeed = 4;
+  let gameOver = false;
+  let paused = false; // ★ P 暫停
+  let distanceSinceLastSpawn = 0;
+  const spawnEvery = 400; // 每跑大約 400px 生一個物件（可調）
+
+  const groundY = 340;
+  let invincibleUntil = 0;
+  let canCount = 0;
+
+  const player = {
+    x: 140,                // 偏左（像 Steve）
+    y: groundY - 20,
+    vy: 0,
+    width: 96,
+    height: 96,
+    scale: 1.3,
+    sprite: characters[charIndex],
+    onGround: true,
+  };
+
+  const gravity = 0.3;
+  const jumpPower = -14;
+  const items = [];
+
+  // ★ 土狼時間 + 跳躍緩衝（毫秒）
+  const COYOTE_MS = 100;
+  const BUFFER_MS = 120;
+  let lastGroundedTime = Date.now();
+  let jumpPressedTime = 0;
+
+  function jump() {
+    // 改為只記錄「想跳」時間，實際起跳交給 update 的消耗邏輯
+    jumpPressedTime = Date.now();
+  }
+
+  function tryConsumeBufferedJump(now) {
+    const pressedRecently = jumpPressedTime && (now - jumpPressedTime) <= BUFFER_MS;
+    const canCoyote = (now - lastGroundedTime) <= COYOTE_MS;
+    if (pressedRecently && (player.onGround || canCoyote)) {
+      player.vy = jumpPower;
+      player.onGround = false;
+      jumpPressedTime = 0; // 消耗
+      return true;
+    }
+    // 若緩衝過期也清掉，避免累積
+    if (jumpPressedTime && (now - jumpPressedTime) > BUFFER_MS) {
+      jumpPressedTime = 0;
+    }
+    return false;
+  }
+
+  document.addEventListener('keydown', (e) => {
+    // ★ 空白鍵：不捲動、不重複觸發
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (!e.repeat) jump();
+    }
+    if (e.code === 'KeyC') {
+      charIndex = (charIndex + 1) % characters.length;
+      player.sprite = characters[charIndex];
+    }
+    if (e.code === 'KeyP' && !gameOver) {
+      paused = !paused;
+    }
+    if (e.code === 'KeyR' && gameOver) {
+      resetGame();
+      // loop 一直跑，不需要重新呼叫
+    }
+  });
+
+  function spawnItem() {
+    if (paused || gameOver) return; // ★ 暫停或結束時不生成
+    const r = Math.random();
+    let type = 'bone';
+    if (r < 0.5) type = 'bone';
+    else if (r < 0.8) type = 'can';
+    else type = 'obstacle';
+
+    let width = 64;
+    let height = 64;
+    if (type === 'obstacle') {
+      const sizes = [64, 80, 96];
+      const randomSize = sizes[Math.floor(Math.random() * sizes.length)];
+      width = height = randomSize;
+    }
+
+    items.push({
+      type,
+      x: canvas.width,
+      y: groundY,
+      width,
+      height
+    });
+  }
+
+  function update() {
+    if (paused || gameOver) return;
+
+    const now = Date.now();
+
+    if (player.scale >= 2.0) {
+      player.vy -= 0.05;
+      player.floatOffset = Math.sin(now / 200) * 6;
+    }
+
+    player.vy += gravity;
+    player.y += player.vy;
+
+    const visualOffset = player.height * (player.scale - 1);
+    const adjustedGroundY = groundY - visualOffset;
+
+    if (player.y >= adjustedGroundY) {
+      player.y = adjustedGroundY;
+      player.vy = 0;
+      if (!player.onGround) {
+        player.onGround = true;
+        lastGroundedTime = now; // ★ 更新最後接地時間
+      }
+    } else {
+      player.onGround = false;
+    }
+
+    // ★ 嘗試消耗緩衝的跳躍（包含土狼容錯）
+    tryConsumeBufferedJump(now);
+
+    for (let i = items.length - 1; i >= 0; i--) {
+      const item = items[i];
+      item.x -= gameSpeed;
+      if (item.x + item.width < 0) {
+        items.splice(i, 1);
+        continue;
+      }
+
+      // 寬容碰撞盒
+      const padP = 8;
+      const padI = item.type === 'obstacle' ? 6 : 4;
+
+      const pLeft   = player.x + padP;
+      const pRight  = player.x + player.width * player.scale - padP;
+      const pTop    = player.y + padP;
+      const pBottom = player.y + player.height * player.scale - padP;
+
+      const iLeft   = item.x + padI;
+      const iRight  = item.x + item.width - padI;
+      const iTop    = item.y + padI;
+      const iBottom = item.y + item.height - padI;
+
+      if (pRight > iLeft && pLeft < iRight && pBottom > iTop && pTop < iBottom) {
+        if (item.type === 'bone') {
+          score++;
+        } else if (item.type === 'can') {
+          player.scale = Math.min(player.scale + 0.1, 4.0);
+          canCount++;
+          if (canCount >= 5) {
+            invincibleUntil = now + 5000;
+            canCount = 0;
+          }
+        } else if (item.type === 'obstacle') {
+          if (now >= invincibleUntil) {
+            gameOver = true; // 覆蓋層在 draw() 顯示；loop 仍執行以便偵測 R
+          }
+        }
+        items.splice(i, 1);
+      }
+    }
+
+    if (gameSpeed < 12) gameSpeed += 0.0004;
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const sprite = images[player.sprite];
+    const drawWidth = player.width * player.scale;
+    const drawHeight = player.height * player.scale;
+    player.floatOffset = Math.sin(Date.now() / 300) * 1.5 + (player.scale >= 2.0 ? Math.sin(Date.now() / 200) * 6 : 0);
+
+    // 角色
+    if (Date.now() < invincibleUntil) {
+      ctx.save();
+      ctx.shadowColor = '#99f';
+      ctx.shadowBlur = 30;
+      ctx.globalAlpha = 0.8;
+      ctx.drawImage(sprite, player.x, player.y + (player.floatOffset || 0), drawWidth, drawHeight);
+      ctx.restore();
+    } else {
+      ctx.drawImage(sprite, player.x, player.y + (player.floatOffset || 0), drawWidth, drawHeight);
+    }
+
+    // 物件
+    items.forEach(item => {
+      if (images[item.type].complete) {
+        ctx.drawImage(images[item.type], item.x, item.y, item.width, item.height);
+      }
+    });
+
+    // HUD
+    ctx.fillStyle = '#fff8f8';
+    ctx.font = '28px monospace';
+    ctx.shadowColor = '#ffccff';
+    ctx.shadowBlur = 10;
+    ctx.fillText(`Score: ${score}`, 20, 40);
+    ctx.fillText(`Character: ${player.sprite}`, 20, 70);
+    const thumbSize = 48;
+    ctx.drawImage(sprite, canvas.width - thumbSize - 20, 20, thumbSize, thumbSize);
+    ctx.fillText(`Cans: ${canCount}/5`, 20, 100);
+
+    // 右上角小字提示
+    ctx.save();
+    ctx.font = '14px monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = '#000000';
+    ctx.shadowBlur = 6;
+    ctx.textAlign = 'right';
+    ctx.globalAlpha = 0.9;
+    ctx.fillText('Press C to change character, P to pause', canvas.width - 12, 22);
+    ctx.restore();
+
+    // 罐頭進度條
+    const maxCans = 5;
+    const barWidth = 150;
+    const barHeight = 10;
+    const barX = 20;
+    const barY = 110;
+    ctx.fillStyle = '#ffcc99';
+    ctx.fillRect(barX, barY, (canCount / maxCans) * barWidth, barHeight);
+    ctx.strokeStyle = '#fff';
+    ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+    if (Date.now() < invincibleUntil) {
+      ctx.fillStyle = '#c8f8ff';
+      ctx.font = '20px monospace';
+      ctx.shadowColor = '#66f2ff';
+      ctx.shadowBlur = 10;
+      ctx.fillText('Invincible!', canvas.width - 220, 70);
+
+      const invBarWidth = 180;
+      const invBarHeight = 8;
+      const remaining = (invincibleUntil - Date.now()) / 5000;
+      ctx.fillStyle = '#66f2ff';
+      ctx.fillRect(canvas.width - 220, 80, invBarWidth * remaining, invBarHeight);
+      ctx.strokeStyle = '#fff';
+      ctx.strokeRect(canvas.width - 220, 80, invBarWidth, invBarHeight);
+    }
+
+    if (player.scale >= 2.0) {
+      ctx.fillStyle = '#ffe6f0';
+      ctx.font = '22px monospace';
+      ctx.shadowColor = '#ff88dd';
+      ctx.shadowBlur = 20;
+      const message = canCount >= 20 ? 'Super many cans! 🐶💥' : 'Too many cans... 🐶🎈';
+      ctx.fillText(message, canvas.width - 330, 40);
+    }
+
+    // 覆蓋層：暫停
+    if (paused && !gameOver) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 32px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('Paused', canvas.width / 2, canvas.height / 2 - 10);
+      ctx.font = '18px monospace';
+      ctx.fillText('Press P to resume', canvas.width / 2, canvas.height / 2 + 22);
+      ctx.textAlign = 'left';
+      ctx.restore();
+    }
+
+    // 覆蓋層：Game Over + Press R
+    if (gameOver) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 36px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('Game Over', canvas.width / 2, canvas.height / 2 - 20);
+      ctx.font = '20px monospace';
+      ctx.fillText('Press R to restart', canvas.width / 2, canvas.height / 2 + 16);
+      ctx.textAlign = 'left';
+      ctx.restore();
+    }
+  }
+
+  function loop() {
+    update();
+    draw();
+    // rAF 持續跑：暫停時不更新狀態，但保留鍵盤可恢復/重開
+    requestAnimationFrame(loop);
+  }
+
+  function resetGame() {
+    score = 0;
+    gameSpeed = 4;
+    invincibleUntil = 0;
+    canCount = 0;
+    gameOver = false;
+    paused = false;
+
+    items.length = 0;
+    player.x = 140;
+    player.y = groundY - 20;
+    player.vy = 0;
+    player.onGround = true;
+    player.scale = 1.3;
+    player.sprite = characters[charIndex];
+
+    // 清掉跳躍緩衝狀態
+    jumpPressedTime = 0;
+    lastGroundedTime = Date.now();
+  }
+
+  setInterval(spawnItem, 1000);
+
+  Promise.all(Object.values(images).map(img => new Promise(resolve => {
+    img.onload = resolve;
+  }))).then(() => {
+    loop();
+  });
+</script>
+</body>
+</html>
