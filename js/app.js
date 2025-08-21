@@ -354,23 +354,6 @@ async function renderPost(slug){
   }
 }
 
-function renderGames(){
-  setActive('#/games');
-  app.innerHTML = `
-    <section class="container py-16">
-      <h1>Games</h1>
-      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); margin-top:1.25rem">
-        <a href="./games/dachshund.html" class="glass card">
-          <span class="tag">fun</span>
-          <h3 style="margin-top:.5rem">🐶 Dachshund Runner</h3>
-          <p class="muted">A small running game with dachshunds.</p>
-        </a>
-      </div>
-    </section>
-  `;
-  setHead('Shen — Games', 'Mini games I made.');
-}
-
 // ---- Helpers：Clock + Parallax（rAF） + Router
 function startClock(){
   const el = document.getElementById('clock');
@@ -468,6 +451,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     console.error(e);
   }
 });
+
 
 
 
