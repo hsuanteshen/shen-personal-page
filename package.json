@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:index": "node scripts/build-index.mjs"
+    "build:index": "node scripts/build-content.mjs"
   }
 }
