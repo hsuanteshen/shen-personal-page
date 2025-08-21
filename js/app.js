@@ -216,44 +216,183 @@ function renderCV(){
   setHead('Shen — CV','Education, publications, awards.');
 }
 
-function renderProjects(){
+// Projects 列表（保持卡片外觀）
+async function renderProjects(){
   setActive('#/projects');
-  app.innerHTML = `
-    <section class="container py-16">
-      <h1>Projects</h1>
-      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); margin-top:1.25rem">
-        ${DATA.projects.map(p=>`
-          <div class="glass card">
-            <span class="tag">${p.status}</span>
-            <h3 style="margin-top:.5rem">${p.title}</h3>
-            <p class="muted">${p.summary}</p>
-          </div>`).join('')}
-      </div>
-    </section>
-  `;
-  setHead('Shen — Projects','Projects and research directions.');
+  app.innerHTML = `<section class="container py-16"><h1>Projects</h1><p class="muted">Loading…</p></section>`;
+  try{
+    const items = await loadProjectsIndex();
+    app.innerHTML = `
+      <section class="container py-16">
+        <h1>Projects</h1>
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); margin-top:1.25rem">
+          ${items.map(p=>`
+            <div class="glass card">
+              ${p.status?`<span class="tag">${p.status}</span>`:''}
+              <h3 style="margin-top:.5rem"><a href="#/projects/${p.slug}">${p.title}</a></h3>
+              <p class="muted">${p.summary||''}</p>
+              ${p.repo?`<a class="btn" href="${p.repo}" target="_blank" rel="noopener">Repo</a>`:''}
+            </div>`).join('')}
+        </div>
+      </section>
+    `;
+    setHead('Shen — Projects','Projects and research directions.');
+  }catch(e){
+    app.innerHTML = `<section class="container py-16"><h1>Projects</h1><p class="muted">讀取失敗：${e.message}</p></section>`;
+  }
 }
 
-function renderPapers(){
-  setActive('#/papers');
-  app.innerHTML = `
-    <section class="container py-16">
-      <h1>Papers</h1>
-      <div class="list mt-3">
-        ${DATA.papers.map(p=>`
-          <div class="item">
-            <div class="prose"><h3 style="margin:0">${p.title}</h3></div>
-            <div class="muted">${[p.venue, p.year].filter(Boolean).join(" • ")}</div>
-            <div class="mt-2">
-              ${p.pdf?`<a class="btn" href="${p.pdf}">PDF</a>`:""}
-              ${p.doi?`<a class="btn" style="margin-left:.5rem" href="https://doi.org/${p.doi}" target="_blank" rel="noopener">DOI</a>`:""}
-            </div>
+// ---- Projects
+let __projectsIndex = null;
+async function loadProjectsIndex(){
+  if(__projectsIndex) return __projectsIndex;
+  const res = await fetch(`projects.index.json?ts=${Date.now()}`, { cache: 'no-store' });
+  if(!res.ok) throw new Error('找不到 projects.index.json');
+  __projectsIndex = await res.json();
+  return __projectsIndex;
+}
+async function loadProjectBySlug(slug){
+  const idx = await loadProjectsIndex();
+  const hit = idx.find(p=>p.slug===slug);
+  if(!hit) throw new Error('Project 不存在');
+  const raw = await fetch(`projects/${hit.file}?ts=${Date.now()}`, { cache: 'no-store' }).then(r=>r.text());
+  const body = raw.replace(/^---[\s\S]*?\n---\s*/,'').trim();
+  return { ...hit, body };
+}
+
+async function renderProject(slug){
+  setActive('#/projects');
+  app.innerHTML = `<section class="container py-16"><h1>Loading…</h1></section>`;
+  try{
+    const p = await loadProjectBySlug(slug);
+    app.innerHTML = `
+      <section class="container py-16">
+        <article class="prose" style="max-width:72ch">
+          <h1>${p.title}</h1>
+          ${p.status?`<p class="muted">Status: ${p.status}</p>`:''}
+          ${p.cover?`<img src="${p.cover}" alt="" style="width:100%;border-radius:16px;margin:1rem 0">`:''}
+          ${mdToHtml(p.body)}
+          <div class="mt-3">
+            <a class="btn" href="#/projects">← Back to Projects</a>
+            ${p.repo?`<a class="btn" style="margin-left:.5rem" href="${p.repo}" target="_blank" rel="noopener">Repo</a>`:''}
           </div>
-        `).join('')}
-      </div>
-    </section>
-  `;
-  setHead('Shen — Papers','Selected papers & preprints.');
+        </article>
+      </section>
+    `;
+    setHead(`${p.title} — Project`, p.summary || '');
+    afterPostRender();
+  }catch(e){
+    app.innerHTML = `<section class="container py-16"><h1>Not found</h1><p class="muted">${e.message}</p></section>`;
+  }
+}
+
+// Papers 列表（保持「標題 + PDF 按鈕」）
+async function renderPapers(){
+  setActive('#/papers');
+  app.innerHTML = `<section class="container py-16"><h1>Papers</h1><p class="muted">Loading…</p></section>`;
+  try{
+    const items = await loadPapersIndex();
+    app.innerHTML = `
+      <section class="container py-16">
+        <h1>Papers</h1>
+        <div class="list mt-3">
+          ${items.map(p=>`
+            <div class="item">
+              <div class="prose"><h3 style="margin:0"><a href="#/papers/${p.slug}">${p.title}</a></h3></div>
+              <div class="muted">${[p.venue, p.year].filter(Boolean).join(' • ')}</div>
+              <div class="mt-2">
+                ${p.pdf?`<a class="btn" href="${p.pdf}" target="_blank" rel="noopener">PDF</a>`:''}
+                ${p.doi?`<a class="btn" style="margin-left:.5rem" href="https://doi.org/${p.doi}" target="_blank" rel="noopener">DOI</a>`:''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </section>
+    `;
+    setHead('Shen — Papers','Selected papers & preprints.');
+  }catch(e){
+    app.innerHTML = `<section class="container py-16"><h1>Papers</h1><p class="muted">讀取失敗：${e.message}</p></section>`;
+  }
+}
+
+// ---- Papers
+let __papersIndex = null;
+async function loadPapersIndex(){
+  if(__papersIndex) return __papersIndex;
+  const res = await fetch(`papers.index.json?ts=${Date.now()}`, { cache: 'no-store' });
+  if(!res.ok) throw new Error('找不到 papers.index.json');
+  __papersIndex = await res.json();
+  return __papersIndex;
+}
+async function loadPaperBySlug(slug){
+  const idx = await loadPapersIndex();
+  const hit = idx.find(p=>p.slug===slug);
+  if(!hit) throw new Error('Paper 不存在');
+  const raw = await fetch(`papers/${hit.file}?ts=${Date.now()}`, { cache: 'no-store' }).then(r=>r.text());
+  const body = raw.replace(/^---[\s\S]*?\n---\s*/,'').trim();
+  return { ...hit, body };
+}
+
+async function renderPaper(slug){
+  setActive('#/papers');
+  app.innerHTML = `<section class="container py-16"><h1>Loading…</h1></section>`;
+  try{
+    const p = await loadPaperBySlug(slug);
+    app.innerHTML = `
+      <section class="container py-16">
+        <article class="prose">
+          <h1>${p.title}</h1>
+          <p class="muted">${[p.venue, p.year].filter(Boolean).join(' • ')}</p>
+          <p>
+            ${p.pdf?`<a class="btn" href="${p.pdf}" target="_blank" rel="noopener">PDF</a>`:''}
+            ${p.doi?`<a class="btn" style="margin-left:.5rem" href="https://doi.org/${p.doi}" target="_blank" rel="noopener">DOI</a>`:''}
+          </p>
+          ${mdToHtml(p.body)}
+          <div class="mt-3"><a class="btn" href="#/papers">← Back to Papers</a></div>
+        </article>
+      </section>
+    `;
+    setHead(`${p.title} — Paper`, p.summary || '');
+    afterPostRender();
+  }catch(e){
+    app.innerHTML = `<section class="container py-16"><h1>Not found</h1><p class="muted">${e.message}</p></section>`;
+  }
+}
+
+// ---- Projects loader
+let __projectsIndex = null;
+async function loadProjectsIndex(){
+  if(__projectsIndex) return __projectsIndex;
+  const res = await fetch(`projects.index.json?ts=${Date.now()}`, { cache: 'no-store' });
+  if(!res.ok) throw new Error('找不到 projects.index.json');
+  __projectsIndex = await res.json();
+  return __projectsIndex;
+}
+async function loadProjectBySlug(slug){
+  const idx = await loadProjectsIndex();
+  const hit = idx.find(p=>p.slug===slug);
+  if(!hit) throw new Error('Project 不存在');
+  const raw = await fetch(`projects/${hit.file}?ts=${Date.now()}`, { cache: 'no-store' }).then(r=>r.text());
+  const body = raw.replace(/^---[\s\S]*?\n---\s*/,'').trim();
+  return { ...hit, body };
+}
+
+// ---- Papers loader
+let __papersIndex = null;
+async function loadPapersIndex(){
+  if(__papersIndex) return __papersIndex;
+  const res = await fetch(`papers.index.json?ts=${Date.now()}`, { cache: 'no-store' });
+  if(!res.ok) throw new Error('找不到 papers.index.json');
+  __papersIndex = await res.json();
+  return __papersIndex;
+}
+async function loadPaperBySlug(slug){
+  const idx = await loadPapersIndex();
+  const hit = idx.find(p=>p.slug===slug);
+  if(!hit) throw new Error('Paper 不存在');
+  const raw = await fetch(`papers/${hit.file}?ts=${Date.now()}`, { cache: 'no-store' }).then(r=>r.text());
+  const body = raw.replace/^---[\s\S]*?\n---\s*/,'').trim();
+  return { ...hit, body };
 }
 
 // ---- Blog loader（含快取破壞 & fallback）
@@ -386,11 +525,18 @@ function initParallax(){
 function router(){
   const h = location.hash || '#/';
   if(h==="#/" || h==="#") return renderHome();
-  if(h.startsWith('#/blog/')) return renderPost(h.split('/')[2]);
-  if(h==="#/cv") return renderCV();
-  if(h==="#/projects") return renderProjects();
-  if(h==="#/papers") return renderPapers();
-  if(h==="#/blog") return renderBlog();
+
+  if(h.startsWith('#/blog/'))     return renderPost(h.split('/')[2]);
+  if(h==="#/blog")                return renderBlog();
+
+  if(h.startsWith('#/projects/')) return renderProject(h.split('/')[2]);
+  if(h==="#/projects")            return renderProjects();
+
+  if(h.startsWith('#/papers/'))   return renderPaper(h.split('/')[2]);
+  if(h==="#/papers")              return renderPapers();
+
+  if(h==="#/cv")                  return renderCV();
+
   renderHome();
 }
 
@@ -451,8 +597,3 @@ window.addEventListener('DOMContentLoaded', ()=>{
     console.error(e);
   }
 });
-
-
-
-
-
