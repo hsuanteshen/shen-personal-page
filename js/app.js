@@ -211,7 +211,7 @@ function renderCV(){
         </ul>
         <h2>Languages</h2>
         <ul>
-          ${cv.languages.map(p=>`<li><strong>${p.lan)</strong> : ${p.how}`).join('')}
+          ${cv.languages.map(e=>`<li><strong>${e.lan)</strong> : ${e.how}</li>`).join('')}
         </ul>
         <h2>Publications (selected)</h2>
         <ul>
@@ -573,6 +573,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     console.error(e);
   }
 });
+
 
 
 
