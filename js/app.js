@@ -1,8 +1,9 @@
 /* =========================
-   Safe app.js (drop-in)
-   - 含 setHead / afterPostRender
-   - Blog 讀 blog.index.json（有快取破壞參數）
-   - 全域錯誤護欄：出錯會把錯誤顯示在頁面
+   app.js — fixed & robust
+   - 動態載入 Blog / Projects / Papers (Markdown + index.json)
+   - 維持原本外觀：Projects 卡片、Papers 標題+PDF/DOI
+   - 點標題跳詳頁
+   - setHead / afterPostRender / 錯誤護欄
    ========================= */
 
 // ---- SEO helpers
@@ -19,7 +20,7 @@ function setHead(title, desc){
   }
 }
 
-// ---- After post render: math + code highlight（可選）
+// ---- After post render: math + code highlight（若 head 有載 KaTeX/Prism 會自動啟動）
 function afterPostRender(){
   const root = document.querySelector('.prose');
   if (!root) return;
@@ -34,7 +35,7 @@ function afterPostRender(){
   if (window.Prism){ Prism.highlightAll(); }
 }
 
-// ---- Demo DATA（非 blog，用於 CV / Projects / Papers）
+// ---- Demo DATA（CV/Projects/Papers 用到的靜態資料 & Blog fallback）
 const DATA = {
   cv: {
     education: [
@@ -55,7 +56,7 @@ const DATA = {
   papers: [
     { title:"A Constructive Closure-Based Proof of a Schur-Type Partition Theorem", year:2025, venue:"Preprint", pdf:"#", doi:null },
   ],
-  // 提供 fallback：當 blog.index.json 讀不到時會顯示這一則
+  // 當 blog.index.json 讀不到時的範例
   blogFallback: [
     { slug:"hello-world", title:"Hybrid = Editorial × Cinematic", date:"2025-08-18",
       summary:"為什麼首頁用玻璃、內容頁走雜誌式是最佳解。",
@@ -91,8 +92,7 @@ function mdToHtml(md){
   return h;
 }
 
-// ---- DOM refs
-// ---- 保險：找不到 #app 也自動建立，避免整頁空白
+// ---- DOM refs & 基礎保障
 function ensureAppRoot(){
   let el = document.getElementById('app');
   if (el) return el;
@@ -101,7 +101,6 @@ function ensureAppRoot(){
   el.id = 'app';
   el.setAttribute('role','main');
   if (hero) {
-    // 插到 hero 裡、在 footer 前；沒有 footer 就加在最後
     const footer = hero.querySelector('footer');
     hero.insertBefore(el, footer || null);
   } else {
@@ -112,7 +111,6 @@ function ensureAppRoot(){
 const app = ensureAppRoot();
 const nav = document.getElementById('nav');
 
-// ---- Router helpers
 function setActive(hash){
   const links = nav ? nav.querySelectorAll('a') : [];
   links.forEach(a=>{
@@ -121,7 +119,7 @@ function setActive(hash){
   });
 }
 
-// ---- Pages
+/* ========= Pages（維持你的外觀） ========= */
 function renderHome(){
   setActive('#/');
   app.innerHTML = `
@@ -131,7 +129,7 @@ function renderHome(){
           <div class="glass glass-strong card" data-accent>
             <h1>Simplicitas.</h1>
             <p class="muted mt-2" style="max-width:66ch">
-              Hello, this is Shen, and this is my personal page.
+              Hello, this is Shen. (haven't figured out what to write here yet)
             </p>
             <div class="mt-6">
               <a class="btn primary" href="#/projects">Explore Projects</a>
@@ -216,186 +214,7 @@ function renderCV(){
   setHead('Shen — CV','Education, publications, awards.');
 }
 
-// Projects 列表（保持卡片外觀）
-async function renderProjects(){
-  setActive('#/projects');
-  app.innerHTML = `<section class="container py-16"><h1>Projects</h1><p class="muted">Loading…</p></section>`;
-  try{
-    const items = await loadProjectsIndex();
-    app.innerHTML = `
-      <section class="container py-16">
-        <h1>Projects</h1>
-        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); margin-top:1.25rem">
-          ${items.map(p=>`
-            <div class="glass card">
-              ${p.status?`<span class="tag">${p.status}</span>`:''}
-              <h3 style="margin-top:.5rem"><a href="#/projects/${p.slug}">${p.title}</a></h3>
-              <p class="muted">${p.summary||''}</p>
-              ${p.repo?`<a class="btn" href="${p.repo}" target="_blank" rel="noopener">Repo</a>`:''}
-            </div>`).join('')}
-        </div>
-      </section>
-    `;
-    setHead('Shen — Projects','Projects and research directions.');
-  }catch(e){
-    app.innerHTML = `<section class="container py-16"><h1>Projects</h1><p class="muted">讀取失敗：${e.message}</p></section>`;
-  }
-}
-
-// ---- Projects
-let __projectsIndex = null;
-async function loadProjectsIndex(){
-  if(__projectsIndex) return __projectsIndex;
-  const res = await fetch(`projects.index.json?ts=${Date.now()}`, { cache: 'no-store' });
-  if(!res.ok) throw new Error('找不到 projects.index.json');
-  __projectsIndex = await res.json();
-  return __projectsIndex;
-}
-async function loadProjectBySlug(slug){
-  const idx = await loadProjectsIndex();
-  const hit = idx.find(p=>p.slug===slug);
-  if(!hit) throw new Error('Project 不存在');
-  const raw = await fetch(`projects/${hit.file}?ts=${Date.now()}`, { cache: 'no-store' }).then(r=>r.text());
-  const body = raw.replace(/^---[\s\S]*?\n---\s*/,'').trim();
-  return { ...hit, body };
-}
-
-async function renderProject(slug){
-  setActive('#/projects');
-  app.innerHTML = `<section class="container py-16"><h1>Loading…</h1></section>`;
-  try{
-    const p = await loadProjectBySlug(slug);
-    app.innerHTML = `
-      <section class="container py-16">
-        <article class="prose" style="max-width:72ch">
-          <h1>${p.title}</h1>
-          ${p.status?`<p class="muted">Status: ${p.status}</p>`:''}
-          ${p.cover?`<img src="${p.cover}" alt="" style="width:100%;border-radius:16px;margin:1rem 0">`:''}
-          ${mdToHtml(p.body)}
-          <div class="mt-3">
-            <a class="btn" href="#/projects">← Back to Projects</a>
-            ${p.repo?`<a class="btn" style="margin-left:.5rem" href="${p.repo}" target="_blank" rel="noopener">Repo</a>`:''}
-          </div>
-        </article>
-      </section>
-    `;
-    setHead(`${p.title} — Project`, p.summary || '');
-    afterPostRender();
-  }catch(e){
-    app.innerHTML = `<section class="container py-16"><h1>Not found</h1><p class="muted">${e.message}</p></section>`;
-  }
-}
-
-// Papers 列表（保持「標題 + PDF 按鈕」）
-async function renderPapers(){
-  setActive('#/papers');
-  app.innerHTML = `<section class="container py-16"><h1>Papers</h1><p class="muted">Loading…</p></section>`;
-  try{
-    const items = await loadPapersIndex();
-    app.innerHTML = `
-      <section class="container py-16">
-        <h1>Papers</h1>
-        <div class="list mt-3">
-          ${items.map(p=>`
-            <div class="item">
-              <div class="prose"><h3 style="margin:0"><a href="#/papers/${p.slug}">${p.title}</a></h3></div>
-              <div class="muted">${[p.venue, p.year].filter(Boolean).join(' • ')}</div>
-              <div class="mt-2">
-                ${p.pdf?`<a class="btn" href="${p.pdf}" target="_blank" rel="noopener">PDF</a>`:''}
-                ${p.doi?`<a class="btn" style="margin-left:.5rem" href="https://doi.org/${p.doi}" target="_blank" rel="noopener">DOI</a>`:''}
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      </section>
-    `;
-    setHead('Shen — Papers','Selected papers & preprints.');
-  }catch(e){
-    app.innerHTML = `<section class="container py-16"><h1>Papers</h1><p class="muted">讀取失敗：${e.message}</p></section>`;
-  }
-}
-
-// ---- Papers
-let __papersIndex = null;
-async function loadPapersIndex(){
-  if(__papersIndex) return __papersIndex;
-  const res = await fetch(`papers.index.json?ts=${Date.now()}`, { cache: 'no-store' });
-  if(!res.ok) throw new Error('找不到 papers.index.json');
-  __papersIndex = await res.json();
-  return __papersIndex;
-}
-async function loadPaperBySlug(slug){
-  const idx = await loadPapersIndex();
-  const hit = idx.find(p=>p.slug===slug);
-  if(!hit) throw new Error('Paper 不存在');
-  const raw = await fetch(`papers/${hit.file}?ts=${Date.now()}`, { cache: 'no-store' }).then(r=>r.text());
-  const body = raw.replace(/^---[\s\S]*?\n---\s*/,'').trim();
-  return { ...hit, body };
-}
-
-async function renderPaper(slug){
-  setActive('#/papers');
-  app.innerHTML = `<section class="container py-16"><h1>Loading…</h1></section>`;
-  try{
-    const p = await loadPaperBySlug(slug);
-    app.innerHTML = `
-      <section class="container py-16">
-        <article class="prose">
-          <h1>${p.title}</h1>
-          <p class="muted">${[p.venue, p.year].filter(Boolean).join(' • ')}</p>
-          <p>
-            ${p.pdf?`<a class="btn" href="${p.pdf}" target="_blank" rel="noopener">PDF</a>`:''}
-            ${p.doi?`<a class="btn" style="margin-left:.5rem" href="https://doi.org/${p.doi}" target="_blank" rel="noopener">DOI</a>`:''}
-          </p>
-          ${mdToHtml(p.body)}
-          <div class="mt-3"><a class="btn" href="#/papers">← Back to Papers</a></div>
-        </article>
-      </section>
-    `;
-    setHead(`${p.title} — Paper`, p.summary || '');
-    afterPostRender();
-  }catch(e){
-    app.innerHTML = `<section class="container py-16"><h1>Not found</h1><p class="muted">${e.message}</p></section>`;
-  }
-}
-
-// ---- Projects loader
-let __projectsIndex = null;
-async function loadProjectsIndex(){
-  if(__projectsIndex) return __projectsIndex;
-  const res = await fetch(`projects.index.json?ts=${Date.now()}`, { cache: 'no-store' });
-  if(!res.ok) throw new Error('找不到 projects.index.json');
-  __projectsIndex = await res.json();
-  return __projectsIndex;
-}
-async function loadProjectBySlug(slug){
-  const idx = await loadProjectsIndex();
-  const hit = idx.find(p=>p.slug===slug);
-  if(!hit) throw new Error('Project 不存在');
-  const raw = await fetch(`projects/${hit.file}?ts=${Date.now()}`, { cache: 'no-store' }).then(r=>r.text());
-  const body = raw.replace(/^---[\s\S]*?\n---\s*/,'').trim();
-  return { ...hit, body };
-}
-
-// ---- Papers loader
-let __papersIndex = null;
-async function loadPapersIndex(){
-  if(__papersIndex) return __papersIndex;
-  const res = await fetch(`papers.index.json?ts=${Date.now()}`, { cache: 'no-store' });
-  if(!res.ok) throw new Error('找不到 papers.index.json');
-  __papersIndex = await res.json();
-  return __papersIndex;
-}
-async function loadPaperBySlug(slug){
-  const idx = await loadPapersIndex();
-  const hit = idx.find(p=>p.slug===slug);
-  if(!hit) throw new Error('Paper 不存在');
-  const raw = await fetch(`papers/${hit.file}?ts=${Date.now()}`, { cache: 'no-store' }).then(r=>r.text());
-  const body = raw.replace/^---[\s\S]*?\n---\s*/,'').trim();
-  return { ...hit, body };
-}
-
-// ---- Blog loader（含快取破壞 & fallback）
+/* ========= Blog loader ========= */
 let __postsIndex = null;
 async function loadPostsIndex(){
   if(__postsIndex) return __postsIndex;
@@ -408,7 +227,10 @@ async function loadPostBySlug(slug){
   const index = await loadPostsIndex();
   const hit = index.find(p => p.slug === slug);
   if(!hit) throw new Error('文章不存在');
-  const raw = await fetch(`posts/${hit.file}?ts=${Date.now()}`, { cache: 'no-store' }).then(r=>r.text());
+  const raw = await fetch(`posts/${hit.file}?ts=${Date.now()}`, { cache: 'no-store' }).then(r=>{
+    if(!r.ok) throw new Error('載入文章失敗');
+    return r.text();
+  });
   const body = raw.replace(/^---[\s\S]*?\n---\s*/,'').trim();
   return { title: hit.title, date: hit.date, body };
 }
@@ -474,7 +296,6 @@ async function renderPost(slug){
     setHead(`${post.title} — Shen`, post.body.replace(/\n+/g,' ').slice(0,150)+'…');
     afterPostRender();
   }catch(e){
-    // fallback：顯示內建文章
     const b = DATA.blogFallback[0];
     app.innerHTML = `
       <section class="container py-16">
@@ -493,7 +314,175 @@ async function renderPost(slug){
   }
 }
 
-// ---- Helpers：Clock + Parallax（rAF） + Router
+/* ========= Projects / Papers loaders ========= */
+let __projectsIndex = null;
+async function loadProjectsIndex(){
+  if(__projectsIndex) return __projectsIndex;
+  const res = await fetch(`projects.index.json?ts=${Date.now()}`, { cache: 'no-store' });
+  if(!res.ok) throw new Error('找不到 projects.index.json');
+  __projectsIndex = await res.json();
+  return __projectsIndex;
+}
+async function loadProjectBySlug(slug){
+  const idx = await loadProjectsIndex();
+  const hit = idx.find(p=>p.slug===slug);
+  if(!hit) throw new Error('Project 不存在');
+  const raw = await fetch(`projects/${hit.file}?ts=${Date.now()}`, { cache: 'no-store' }).then(r=>{
+    if(!r.ok) throw new Error('載入 project 檔案失敗');
+    return r.text();
+  });
+  const body = raw.replace(/^---[\s\S]*?\n---\s*/,'').trim(); // ← 修正：一定要有括號
+  return { ...hit, body };
+}
+
+let __papersIndex = null;
+async function loadPapersIndex(){
+  if(__papersIndex) return __papersIndex;
+  const res = await fetch(`papers.index.json?ts=${Date.now()}`, { cache: 'no-store' });
+  if(!res.ok) throw new Error('找不到 papers.index.json');
+  __papersIndex = await res.json();
+  return __papersIndex;
+}
+async function loadPaperBySlug(slug){
+  const idx = await loadPapersIndex();
+  const hit = idx.find(p=>p.slug===slug);
+  if(!hit) throw new Error('Paper 不存在');
+  const raw = await fetch(`papers/${hit.file}?ts=${Date.now()}`, { cache: 'no-store' }).then(r=>{
+    if(!r.ok) throw new Error('載入 paper 檔案失敗');
+    return r.text();
+  });
+  const body = raw.replace(/^---[\s\S]*?\n---\s*/,'').trim(); // ← 修正：一定要有括號
+  return { ...hit, body };
+}
+
+/* ========= Projects / Papers：保持你目前外觀 ========= */
+
+// Projects 列表（卡片）
+async function renderProjects(){
+  setActive('#/projects');
+  app.innerHTML = `<section class="container py-16"><h1>Projects</h1><p class="muted">Loading…</p></section>`;
+  try{
+    const items = await loadProjectsIndex();
+    app.innerHTML = `
+      <section class="container py-16">
+        <h1>Projects</h1>
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); margin-top:1.25rem">
+          ${items.map(p=>`
+            <div class="glass card">
+              ${p.status?`<span class="tag">${p.status}</span>`:''}
+              <h3 style="margin-top:.5rem"><a href="#/projects/${p.slug}">${p.title}</a></h3>
+              <p class="muted">${p.summary||''}</p>
+              ${p.repo?`<a class="btn" href="${p.repo}" target="_blank" rel="noopener">Repo</a>`:''}
+            </div>`).join('')}
+        </div>
+      </section>
+    `;
+    setHead('Shen — Projects','Projects and research directions.');
+  }catch(e){
+    app.innerHTML = `<section class="container py-16"><h1>Projects</h1><p class="muted">讀取失敗：${e.message}</p></section>`;
+  }
+}
+
+// Projects 詳頁
+async function renderProject(slug){
+  setActive('#/projects');
+  app.innerHTML = `<section class="container py-16"><h1>Loading…</h1></section>`;
+  try{
+    const p = await loadProjectBySlug(slug);
+    app.innerHTML = `
+      <section class="container py-16">
+        <article class="prose" style="max-width:72ch">
+          <h1>${p.title}</h1>
+          ${p.status?`<p class="muted">Status: ${p.status}</p>`:''}
+          ${p.cover?`<img src="${p.cover}" alt="" style="width:100%;border-radius:16px;margin:1rem 0">`:''}
+          ${mdToHtml(p.body)}
+          <div class="mt-3">
+            <a class="btn" href="#/projects">← Back to Projects</a>
+            ${p.repo?`<a class="btn" style="margin-left:.5rem" href="${p.repo}" target="_blank" rel="noopener">Repo</a>`:''}
+          </div>
+        </article>
+      </section>
+    `;
+    setHead(`${p.title} — Project`, p.summary || '');
+    afterPostRender();
+  }catch(e){
+    app.innerHTML = `<section class="container py-16"><h1>Not found</h1><p class="muted">${e.message}</p></section>`;
+  }
+}
+
+// Papers 列表（標題 + PDF/DOI）
+async function renderPapers(){
+  setActive('#/papers');
+  app.innerHTML = `<section class="container py-16"><h1>Papers</h1><p class="muted">Loading…</p></section>`;
+  try{
+    const items = await loadPapersIndex();
+    app.innerHTML = `
+      <section class="container py-16">
+        <h1>Papers</h1>
+        <div class="list mt-3">
+          ${items.map(p=>`
+            <div class="item">
+              <div class="prose"><h3 style="margin:0"><a href="#/papers/${p.slug}">${p.title}</a></h3></div>
+              <div class="muted">${[p.venue, p.year].filter(Boolean).join(' • ')}</div>
+              <div class="mt-2">
+                ${p.pdf?`<a class="btn" href="${p.pdf}" target="_blank" rel="noopener">PDF</a>`:''}
+                ${p.doi?`<a class="btn" style="margin-left:.5rem" href="https://doi.org/${p.doi}" target="_blank" rel="noopener">DOI</a>`:''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </section>
+    `;
+    setHead('Shen — Papers','Selected papers & preprints.');
+  }catch(e){
+    app.innerHTML = `<section class="container py-16"><h1>Papers</h1><p class="muted">讀取失敗：${e.message}</p></section>`;
+  }
+}
+
+// Papers 詳頁
+async function renderPaper(slug){
+  setActive('#/papers');
+  app.innerHTML = `<section class="container py-16"><h1>Loading…</h1></section>`;
+  try{
+    const p = await loadPaperBySlug(slug);
+    app.innerHTML = `
+      <section class="container py-16">
+        <article class="prose">
+          <h1>${p.title}</h1>
+          <p class="muted">${[p.venue, p.year].filter(Boolean).join(' • ')}</p>
+          <p>
+            ${p.pdf?`<a class="btn" href="${p.pdf}" target="_blank" rel="noopener">PDF</a>`:''}
+            ${p.doi?`<a class="btn" style="margin-left:.5rem" href="https://doi.org/${p.doi}" target="_blank" rel="noopener">DOI</a>`:''}
+          </p>
+          ${mdToHtml(p.body)}
+          <div class="mt-3"><a class="btn" href="#/papers">← Back to Papers</a></div>
+        </article>
+      </section>
+    `;
+    setHead(`${p.title} — Paper`, p.summary || '');
+    // 可選：結構化資料
+    const ld = {
+      "@context":"https://schema.org",
+      "@type":"ScholarlyArticle",
+      "headline": p.title,
+      "datePublished": p.date || (p.year?`${p.year}-01-01`:undefined),
+      "author": Array.isArray(p.authors) ? p.authors.map(a=>({ "@type":"Person", name:a })) : undefined,
+      "identifier": p.doi ? `https://doi.org/${p.doi}` : undefined,
+      "url": location.href
+    };
+    try{
+      const tag = document.createElement('script');
+      tag.type = 'application/ld+json';
+      tag.textContent = JSON.stringify(ld);
+      document.head.appendChild(tag);
+    }catch(_){}
+    afterPostRender();
+  }catch(e){
+    app.innerHTML = `<section class="container py-16"><h1>Not found</h1><p class="muted">${e.message}</p></section>`;
+  }
+}
+
+/* ========= Helpers：Clock + Parallax ========= */
 function startClock(){
   const el = document.getElementById('clock');
   if(!el) return;
@@ -511,17 +500,18 @@ function initParallax(){
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if(reduce) return;
 
+  // 保留很輕微的左右位移；不做 Y 位移，避免背景跳動
   function move(e){
-    const x = (e.clientX / window.innerWidth - 0.5) * 8; // 比以前小很多
+    const x = (e.clientX / window.innerWidth - 0.5) * 8;
     bg.style.backgroundPosition =
-      `calc(50% + ${x}px) 25%, center center, center center`; // Y 固定在 25%
+      `calc(50% + ${x}px) 25%, center center, center center`;
   }
   window.removeEventListener('mousemove', window.__mv);
-  window.removeEventListener('scroll', window.__sc); // 重要：不再用滾動移動
   window.__mv = move;
   window.addEventListener('mousemove', window.__mv);
 }
 
+/* ========= Router ========= */
 function router(){
   const h = location.hash || '#/';
   if(h==="#/" || h==="#") return renderHome();
@@ -540,26 +530,7 @@ function router(){
   renderHome();
 }
 
-// ---- 全域錯誤保護：把錯誤渲染在頁面，避免整頁空白
-window.addEventListener('error', (e)=>{
-  if (!app) return;
-  app.innerHTML = `
-    <section class="container py-16">
-      <h1>Runtime error</h1>
-      <pre class="prose" style="white-space:pre-wrap">${(e.error && e.error.stack) ? e.error.stack : e.message}</pre>
-      <a class="btn" href="#/">← Back to Home</a>
-    </section>`;
-});
-window.addEventListener('unhandledrejection', (e)=>{
-  if (!app) return;
-  app.innerHTML = `
-    <section class="container py-16">
-      <h1>Unhandled promise rejection</h1>
-      <pre class="prose" style="white-space:pre-wrap">${e.reason && (e.reason.stack || e.reason.message) || String(e.reason)}</pre>
-      <a class="btn" href="#/">← Back to Home</a>
-    </section>`;
-});
-
+/* ========= 全域錯誤護欄 ========= */
 function showFatal(msg){
   const host = document.getElementById('app') || document.body;
   const wrap = document.createElement('div');
@@ -569,7 +540,7 @@ function showFatal(msg){
       <pre class="prose" style="white-space:pre-wrap">${msg}</pre>
       <a class="btn" href="#/">← Back to Home</a>
     </section>`;
-  host.innerHTML = ""; // 清掉原本內容
+  host.innerHTML = "";
   host.appendChild(wrap.firstElementChild);
 }
 window.addEventListener('error', (e)=>{
@@ -579,21 +550,15 @@ window.addEventListener('unhandledrejection', (e)=>{
   showFatal(e.reason?.stack || e.reason?.message || String(e.reason));
 });
 
-// ---- boot
+/* ========= boot ========= */
 window.addEventListener('hashchange', router);
 window.addEventListener('DOMContentLoaded', ()=>{
   try{
-    document.getElementById('y').textContent = new Date().getFullYear();
+    const y = document.getElementById('y');
+    if (y) y.textContent = new Date().getFullYear();
     router();
   }catch(e){
-    // 若初始化就爆，顯示錯誤
-    if (app){
-      app.innerHTML = `
-        <section class="container py-16">
-          <h1>Init error</h1>
-          <pre class="prose" style="white-space:pre-wrap">${e.stack || e.message}</pre>
-        </section>`;
-    }
+    showFatal(e.stack || e.message);
     console.error(e);
   }
 });
