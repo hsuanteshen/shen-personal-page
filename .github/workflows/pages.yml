@@ -9,6 +9,8 @@ on:
       - "js/**"
       - "assets/**"
       - "posts/**"
+      - "projects/**"
+      - "papers/**"
       - "scripts/**"
       - ".github/workflows/pages.yml"
 
