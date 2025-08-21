@@ -131,7 +131,7 @@ function renderHome(){
           <div class="glass glass-strong card" data-accent>
             <h1>Simplicitas.</h1>
             <p class="muted mt-2" style="max-width:66ch">
-              Hello, this is Shen. (haven't figured out what to write here yet)
+              Hello, this is Shen, and this is my personal page.
             </p>
             <div class="mt-6">
               <a class="btn primary" href="#/projects">Explore Projects</a>
@@ -451,6 +451,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     console.error(e);
   }
 });
+
 
 
 
