@@ -44,9 +44,9 @@ const DATA = {
       { where:"Taipei Municipal Chien Kuo High School, Taiwan", what:"High School Diploma", years:"2020-2023" }
     ],
     languages: [
-      { lan:"Chinese", how:"Mother Tongue"},
-      { lan:"English", how:"Fluent"},
-      { lan:"German", how:"Basic"}
+      { lan:"Chinese: Mother Tongue"},
+      { lan:"English: Fluent"},
+      { lan:"German: Basic"}
     ],
     publications: [
        // { title:"A Constructive Closure-Based Proof of a Schur-Type Partition Theorem", year:2025, link:"#"}
@@ -211,7 +211,7 @@ function renderCV(){
         </ul>
         <h2>Languages</h2>
         <ul>
-          ${cv.languages.map(e=>`<li><strong>${e.lan)</strong> : ${e.how}</li>`).join('')}
+          ${cv.languages.map(a=>`<li><strong>${a.lan)</strong></li>`).join('')}
         </ul>
         <h2>Publications (selected)</h2>
         <ul>
@@ -573,6 +573,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     console.error(e);
   }
 });
+
 
 
 
