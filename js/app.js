@@ -39,14 +39,16 @@ function afterPostRender(){
 const DATA = {
   cv: {
     education: [
-      { where:"Leipzig University", what:"BSc Physics (in progress)", years:"2025–" },
-      { where:"ENS Ulm (planned)", what:"M1/M2 Mathematics", years:"—" },
-      { where:"Oxford (planned)", what:"BM BCh", years:"—" }
+      { where:"Leipzig University", what:"IPSP Honours (in progress)", years:"2025–" },
+      { where:"National Chengchi University (NCCU)", what:"B.S. (Suspend)", years:"2023-2025" },
+      { where:"Taipei Municipal Chien Kuo High School", what:"", years:"2020-2023" }
     ],
     publications: [
-      { title:"A Constructive Closure-Based Proof of a Schur-Type Partition Theorem", year:2025, link:"#"}
+       // { title:"A Constructive Closure-Based Proof of a Schur-Type Partition Theorem", year:2025, link:"#"}
     ],
-    awards: [{ name:"Project Gnosis Series — in progress" }]
+    awards: [
+       // { name:"Project Gnosis Series — in progress" }
+    ]
   },
   projects: [
     { title:"Project Gnosis",   status:"Active",      summary:"Number theory × constructive closure proofs; G1–G5 priority." },
@@ -562,3 +564,4 @@ window.addEventListener('DOMContentLoaded', ()=>{
     console.error(e);
   }
 });
+
