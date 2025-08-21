@@ -211,7 +211,7 @@ function renderCV(){
         </ul>
         <h2>Languages</h2>
         <ul>
-          ${cv.languages.map(e=>`<li><strong>${e.lan)</strong> : ${e.how}`).join('')}
+          ${cv.languages.map(p=>`<li><strong>${p.lan)</strong> : ${p.how}`).join('')}
         </ul>
         <h2>Publications (selected)</h2>
         <ul>
@@ -222,7 +222,7 @@ function renderCV(){
       </article>
     </section>
   `;
-  setHead('Shen — CV','Education, language, publications, awards.');
+  setHead('Shen — CV','Education, languages, publications, awards.');
 }
 
 /* ========= Blog loader ========= */
@@ -573,5 +573,6 @@ window.addEventListener('DOMContentLoaded', ()=>{
     console.error(e);
   }
 });
+
 
 
