@@ -1,0 +1,17 @@
+[
+  {
+    "slug": "gnosis",
+    "file": "2025-08-01-gnosis.md",
+    "title": "Project Gnosis",
+    "date": "2025-08-01",
+    "status": "Active",
+    "summary": "Number theory × constructive closure proofs; G1–G5 priority.",
+    "tags": [
+      "number-theory",
+      "closure",
+      "research"
+    ],
+    "cover": "assets/projects/gnosis.jpg",
+    "repo": "https://github.com/hsuanteshen/gnosis"
+  }
+]
