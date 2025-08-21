@@ -203,28 +203,15 @@ async function renderCV(){
   app.innerHTML = `<section class="container py-16"><h1>CV</h1><p class="muted">Loading…</p></section>`;
   try{
     const raw = await fetch(`cv.md?ts=${Date.now()}`, { cache: 'no-store' }).then(r=>r.text());
-    const body = raw.replace(/^---[\s\S]*?\n---\s*/,'').trim(); // 去 frontmatter
-    app.innerHTML = `
-      <section class="container py-16"><article class="prose">
-        ${mdToHtml(body)}
-      </article></section>`;
-    setHead('Shen — CV','Education, publications, awards.');
-    afterPostRender();
-  }catch(e){
-    // 讀不到就退回 DATA.cv（你原本的 render 方式）
-    const cv = DATA.cv;
+    // 去掉 frontmatter (--- ... ---)
+    const body = raw.replace(/^---[\s\S]*?\n---\s*/, '').trim();
     app.innerHTML = `
       <section class="container py-16">
-        <article class="prose" aria-labelledby="cv-title">
-          <h1 id="cv-title">Curriculum Vitae</h1>
-          <h2>Education</h2>
-          <ul>${cv.education.map(e=>`<li><strong>${e.where}</strong> — ${e.what} <span class="muted">(${e.years})</span></li>`).join('')}</ul>
-          <h2>Publications (selected)</h2>
-          <ul>${cv.publications.map(p=>`<li>${p.title} <span class="muted">(${p.year})</span></li>`).join('')}</ul>
-          <h2>Awards / Notes</h2>
-          <ul>${cv.awards.map(a=>`<li>${a.name}</li>`).join('')}</ul>
-        </article>
+        <article class="prose">${mdToHtml(body)}</article>
       </section>`;
+    setHead('Shen — CV','Curriculum Vitae');
+  }catch(e){
+    app.innerHTML = `<section class="container py-16"><h1>CV</h1><p class="muted">讀取失敗：${e.message}</p></section>`;
   }
 }
 
@@ -576,6 +563,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     console.error(e);
   }
 });
+
 
 
 
