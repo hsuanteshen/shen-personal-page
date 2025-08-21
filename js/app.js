@@ -39,9 +39,14 @@ function afterPostRender(){
 const DATA = {
   cv: {
     education: [
-      { where:"Leipzig University", what:"IPSP Honours (in progress)", years:"2025–" },
-      { where:"National Chengchi University (NCCU)", what:"B.S. (Suspend)", years:"2023-2025" },
-      { where:"Taipei Municipal Chien Kuo High School", what:"", years:"2020-2023" }
+      { where:"Leipzig University, Germany", what:"IPSP Honours (in progress)", years:"2025–" },
+      { where:"National Chengchi University, Taiwan", what:"B.S. (Suspend)", years:"2023-2025" },
+      { where:"Taipei Municipal Chien Kuo High School, Taiwan", what:"High School Diploma", years:"2020-2023" }
+    ],
+    languages: [
+      { lan:"Chinese", how:"Mother Tongue"},
+      { lan:"English", how:"Fluent"},
+      { lan:"German", how:"Basic"}
     ],
     publications: [
        // { title:"A Constructive Closure-Based Proof of a Schur-Type Partition Theorem", year:2025, link:"#"}
@@ -204,6 +209,10 @@ function renderCV(){
         <ul>
           ${cv.education.map(e=>`<li><strong>${e.where}</strong> — ${e.what} <span class="muted">(${e.years})</span></li>`).join('')}
         </ul>
+        <h2>Languages</h2>
+        <ul>
+          ${cv.languages.map(e=>`<li><strong>${e.lan)</strong> : ${e.how}`).join('')}
+        </ul>
         <h2>Publications (selected)</h2>
         <ul>
           ${cv.publications.map(p=>`<li>${p.title} <span class="muted">(${p.year})</span></li>`).join('')}
@@ -213,7 +222,7 @@ function renderCV(){
       </article>
     </section>
   `;
-  setHead('Shen — CV','Education, publications, awards.');
+  setHead('Shen — CV','Education, language, publications, awards.');
 }
 
 /* ========= Blog loader ========= */
@@ -564,4 +573,5 @@ window.addEventListener('DOMContentLoaded', ()=>{
     console.error(e);
   }
 });
+
 
