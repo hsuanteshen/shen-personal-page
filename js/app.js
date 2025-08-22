@@ -24,15 +24,15 @@ function setHead(title, desc){
 function afterPostRender(){
   const root = document.querySelector('.prose');
   if (!root) return;
-  if (window.renderMathInElement){
-    renderMathInElement(root, {
+  if (window.Prism){ Prism.highlightAll(); }
+  if (window.renderMathInElement) {
+    renderMathInElement(document.getElementById('app'), {
       delimiters: [
-        {left: "$$", right: "$$", display: true},
-        {left: "\\(", right: "\\)", display: false}
+        {left:'$$', right:'$$', display:true},
+        {left:'$', right:'$', display:false}
       ]
     });
   }
-  if (window.Prism){ Prism.highlightAll(); }
 }
 
 // ---- Demo DATA（CV/Projects/Papers 用到的靜態資料 & Blog fallback）
@@ -563,6 +563,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     console.error(e);
   }
 });
+
 
 
 
