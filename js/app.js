@@ -20,41 +20,68 @@ function setHead(title, desc){
   }
 }
 
+// 動態載入外部腳本（確保 KaTeX 真的載到）
+function loadScript(src){
+  return new Promise((resolve, reject)=>{
+    // 已經載過就直接 resolve
+    if ([...document.scripts].some(s => s.src === src)) return resolve();
+    const s = document.createElement('script');
+    s.src = src; s.defer = true;
+    s.onload = ()=> resolve();
+    s.onerror = ()=> reject(new Error('load failed: '+src));
+    document.head.appendChild(s);
+  });
+}
+
+function ensureKatex(){
+  const CSS = "https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css";
+  const JS1 = "https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js";
+  const JS2 = "https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js";
+  // 插入 CSS（若未載）
+  if (!document.querySelector('link[href*="katex.min.css"]')){
+    const link = document.createElement('link');
+    link.rel = "stylesheet"; link.href = CSS;
+    document.head.appendChild(link);
+  }
+  // 逐個載入 JS
+  return loadScript(JS1).then(()=> loadScript(JS2));
+}
+
 // ---- After post render: math + code highlight（若 head 有載 KaTeX/Prism 會自動啟動）
 function afterPostRender(){
   const root = document.getElementById('app');
   if (!root) return;
 
-  // --- KaTeX：等待載入 + 退避重試 ---
-  (function renderMathWithRetry(maxTry = 10){
-    // 若已渲染過（避免重複跑）：檢查頁面是否已有 katex 節點
-    if (root.querySelector('.katex')) return;
-
-    if (window.renderMathInElement) {
-      try {
-        window.renderMathInElement(root, {
-          // 兩種常見分隔符：$$…$$（區塊）、$…$（行內）
-          delimiters: [
-            { left: "$$", right: "$$", display: true },
-            { left: "$",  right: "$",  display: false },
-            // 可選：如果要用 \( … \) 與 \[ … \]，打開下面兩行
-            // { left: "\\[", right: "\\]", display: true },
-            // { left: "\\(", right: "\\)", display: false }
-          ],
-          // 不處理 code/pre/textarea/script 的內容
-          ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
-          throwOnError: false
-        });
-      } catch (e) {
-        console.warn("KaTeX render error:", e);
+  // --- KaTeX：確保載入 + 重試渲染 ---
+  (async function renderMathWithRetry(maxTry = 12){
+    try{
+      if (!window.renderMathInElement) await ensureKatex();
+      if (!window.renderMathInElement) {
+        if (maxTry > 0) return setTimeout(()=>renderMathWithRetry(maxTry-1), 150);
+        console.warn('KaTeX auto-render not available');
+        return;
       }
-      return; // 已成功或已嘗試過
+      // 避免重複渲染：頁面若已有 .katex 就不再跑
+      if (root.querySelector('.katex')) return;
+
+      window.renderMathInElement(root, {
+        // 同時支援 $$…$$、$…$、\[ … \]、\( … \)
+        delimiters: [
+          { left: "$$",  right: "$$",  display: true  },
+          { left: "$",   right: "$",   display: false },
+          { left: "\\[", right: "\\]", display: true  },
+          { left: "\\(", right: "\\)", display: false }
+        ],
+        ignoredTags: ["script","noscript","style","textarea","pre","code"],
+        throwOnError: false
+      });
+    }catch(e){
+      if (maxTry > 0) return setTimeout(()=>renderMathWithRetry(maxTry-1), 150);
+      console.warn('KaTeX render error:', e);
     }
-    // 還沒載好 → 退避重試（每 150ms 一次，最多 10 次 ≈ 1.5s）
-    if (maxTry > 0) setTimeout(()=>renderMathWithRetry(maxTry - 1), 150);
   })();
 
-  // --- Prism（若有載入 Prism） ---
+  // --- Prism（若有載）---
   if (window.Prism) {
     try { window.Prism.highlightAll(); } catch (_) {}
   }
@@ -588,6 +615,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     console.error(e);
   }
 });
+
 
 
 
