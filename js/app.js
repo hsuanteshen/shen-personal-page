@@ -134,7 +134,16 @@ const DATA = {
 
 // ---- Markdown → HTML（標題/粗斜體/連結/清單/行內 code）
 function mdToHtml(md){
+  // 1) 先做基本 escape（不動 $）
   let h = md.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+
+  // 2) **先處理數學：把 $$...$$ 壓成單一元素，避免被拆段**
+  //    注意：允許跨行；保留 $$ 分隔符給 KaTeX
+  h = h.replace(/\$\$([\s\S]*?)\$\$/g, (_m, expr) => {
+    return `<div class="math">$$${expr}$$</div>`;
+  });
+
+  // 3) 行內 code / 粗斜體 / 連結 / 標題 / 清單
   h = h
     .replace(/`([^`]+)`/g,'<code>$1</code>')
     .replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>')
@@ -146,8 +155,11 @@ function mdToHtml(md){
     .replace(/(?:^|\n)-( .*?)(?=\n(?!- )|$)/gs, m=>{
       const items = m.trim().split('\n').map(x=>x.replace(/^- /,'').trim()).map(li=>`<li>${li}</li>`).join('');
       return `<ul>${items}</ul>`;
-    })
-    .replace(/^(?!<h\d|<ul|<li|<blockquote|<p|<\/)(.+)$/gm,'<p>$1</p>');
+    });
+
+  // 4) 包段落（但**不要**包住已經是元素的行，含我們的 <div class="math">）
+  h = h.replace(/^(?!<(h\d|ul|li|blockquote|p|\/|div\b))(.+)$/gm,'<p>$2</p>');
+
   return h;
 }
 
@@ -615,6 +627,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     console.error(e);
   }
 });
+
 
 
 
