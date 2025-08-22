@@ -2,12 +2,18 @@
 title: Curriculum Vitae
 ---
 
+# Curriculum Vitae
+
 ## Education
-- **Leipzig University** — BSc Physics (in progress) _(2025–)_
-- **National Taiwan University** — MSc Mathematics _(2025–2027, expected)_
+- **Leipzig University, Germany** — B.Sc. IPSP Honours (in progress) (2025-)
+- **National ChengChi University, Taiwan** — B.S. in Sociology (2023-2025, suspended)
+- **Taipei Municipal Chien Kuo High School** — High School Diploma (2020-2023)
+
+## Languages
+- **Chinese** : Mother Tongue
+- **English** : Fluent
+- **German** : Basic
 
 ## Publications (selected)
-- A Constructive Closure-Based Proof of a Schur-Type Partition Theorem (2025)
 
 ## Awards / Notes
-- Project Gnosis Series — in progress
