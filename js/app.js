@@ -22,16 +22,30 @@ function setHead(title, desc){
 
 // ---- After post render: math + code highlight（若 head 有載 KaTeX/Prism 會自動啟動）
 function afterPostRender(){
-  const root = document.querySelector('.prose');
+  const root = document.getElementById('app');
   if (!root) return;
-  if (window.Prism){ Prism.highlightAll(); }
+
+  // --- KaTeX ---
   if (window.renderMathInElement) {
-    renderMathInElement(document.getElementById('app'), {
-      delimiters: [
-        {left:'$$', right:'$$', display:true},
-        {left:'$', right:'$', display:false}
-      ]
-    });
+    try {
+      window.renderMathInElement(root, {
+        // 兩種常見分隔符：$...$（行內）、$$...$$（區塊）
+        delimiters: [
+          { left: "$$", right: "$$", display: true },
+          { left: "$",  right: "$",  display: false }
+        ],
+        // 不要處理 code/pre/textarea/script 標籤內容
+        ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+        throwOnError: false
+      });
+    } catch (e) {
+      console.warn("KaTeX render error:", e);
+    }
+  }
+
+  // --- Prism（若有 Prism） ---
+  if (window.Prism) {
+    try { window.Prism.highlightAll(); } catch (_) {}
   }
 }
 
