@@ -134,17 +134,19 @@ const DATA = {
 
 // ---- Markdown → HTML（標題/粗斜體/連結/清單/行內 code）
 function mdToHtml(md){
-  // 1) 先做基本 escape（不動 $）
-  let h = md.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  // --- 0) 先做基本 escape（不動 $ 與 \）
+  let src = md.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 
-  // 2) **先處理數學：把 $$...$$ 壓成單一元素，避免被拆段**
-  //    注意：允許跨行；保留 $$ 分隔符給 KaTeX
-  h = h.replace(/\$\$([\s\S]*?)\$\$/g, (_m, expr) => {
-    return `<div class="math">$$${expr}$$</div>`;
+  // --- 1) 抽取所有 $$…$$ 數學區塊，換成佔位符，避免後續處理把它拆開
+  const mathBlocks = [];
+  src = src.replace(/\$\$([\s\S]*?)\$\$/g, (_m, expr) => {
+    const i = mathBlocks.length;
+    mathBlocks.push(expr);
+    return `§§MATH_BLOCK_${i}§§`;  // 罕見字元佔位
   });
 
-  // 3) 行內 code / 粗斜體 / 連結 / 標題 / 清單
-  h = h
+  // --- 2) 行內 code / 粗斜體 / 斜體 / 連結 / 標題 / 清單
+  let h = src
     .replace(/`([^`]+)`/g,'<code>$1</code>')
     .replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>')
     .replace(/\*([^*\n]+)\*/g,'<em>$1</em>')
@@ -157,8 +159,14 @@ function mdToHtml(md){
       return `<ul>${items}</ul>`;
     });
 
-  // 4) 包段落（但**不要**包住已經是元素的行，含我們的 <div class="math">）
+  // --- 3) 包段落（但不要包住以 HTML 標籤開頭的行）
   h = h.replace(/^(?!<(h\d|ul|li|blockquote|p|\/|div\b))(.+)$/gm,'<p>$2</p>');
+
+  // --- 4) 把佔位符還原成單一元素（整塊在同一個 DOM 內，KaTeX 才抓得到）
+  h = h.replace(/§§MATH_BLOCK_(\d+)§§/g, (_m, i) => {
+    const expr = mathBlocks[Number(i)];
+    return `<div class="math">$$${expr}$$</div>`;
+  });
 
   return h;
 }
@@ -627,6 +635,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     console.error(e);
   }
 });
+
 
 
 
