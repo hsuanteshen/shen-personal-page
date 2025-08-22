@@ -25,25 +25,36 @@ function afterPostRender(){
   const root = document.getElementById('app');
   if (!root) return;
 
-  // --- KaTeX ---
-  if (window.renderMathInElement) {
-    try {
-      window.renderMathInElement(root, {
-        // 兩種常見分隔符：$...$（行內）、$$...$$（區塊）
-        delimiters: [
-          { left: "$$", right: "$$", display: true },
-          { left: "$",  right: "$",  display: false }
-        ],
-        // 不要處理 code/pre/textarea/script 標籤內容
-        ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
-        throwOnError: false
-      });
-    } catch (e) {
-      console.warn("KaTeX render error:", e);
-    }
-  }
+  // --- KaTeX：等待載入 + 退避重試 ---
+  (function renderMathWithRetry(maxTry = 10){
+    // 若已渲染過（避免重複跑）：檢查頁面是否已有 katex 節點
+    if (root.querySelector('.katex')) return;
 
-  // --- Prism（若有 Prism） ---
+    if (window.renderMathInElement) {
+      try {
+        window.renderMathInElement(root, {
+          // 兩種常見分隔符：$$…$$（區塊）、$…$（行內）
+          delimiters: [
+            { left: "$$", right: "$$", display: true },
+            { left: "$",  right: "$",  display: false },
+            // 可選：如果要用 \( … \) 與 \[ … \]，打開下面兩行
+            // { left: "\\[", right: "\\]", display: true },
+            // { left: "\\(", right: "\\)", display: false }
+          ],
+          // 不處理 code/pre/textarea/script 的內容
+          ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+          throwOnError: false
+        });
+      } catch (e) {
+        console.warn("KaTeX render error:", e);
+      }
+      return; // 已成功或已嘗試過
+    }
+    // 還沒載好 → 退避重試（每 150ms 一次，最多 10 次 ≈ 1.5s）
+    if (maxTry > 0) setTimeout(()=>renderMathWithRetry(maxTry - 1), 150);
+  })();
+
+  // --- Prism（若有載入 Prism） ---
   if (window.Prism) {
     try { window.Prism.highlightAll(); } catch (_) {}
   }
@@ -577,6 +588,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     console.error(e);
   }
 });
+
 
 
 
