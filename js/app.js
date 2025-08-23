@@ -288,6 +288,27 @@ async function renderCV(){
 }
 
 /* ========= Blog loader ========= */
+// ---- Blog topics loader
+let __blogTopics = null, __postsIndex = null; // 你可能已定義 __postsIndex
+
+async function loadBlogTopics(){
+  if(__blogTopics) return __blogTopics;
+  const res = await fetch(`blog.topics.json?ts=${Date.now()}`, { cache: 'no-store' });
+  if(!res.ok) throw new Error('找不到 blog.topics.json');
+  __blogTopics = await res.json();
+  return __blogTopics;
+}
+async function loadPostsByTopic(topicSlug){
+  // 確保 posts index 已載
+  if(!__postsIndex){
+    const r = await fetch(`blog.index.json?ts=${Date.now()}`, { cache: 'no-store' });
+    if(!r.ok) throw new Error('找不到 blog.index.json');
+    __postsIndex = await r.json();
+  }
+  return __postsIndex.filter(p => (p.topic && p.topic.slug) === topicSlug);
+}
+
+// ---- Blog loader
 let __postsIndex = null;
 async function loadPostsIndex(){
   if(__postsIndex) return __postsIndex;
@@ -312,12 +333,39 @@ async function renderBlog(){
   setActive('#/blog');
   app.innerHTML = `<section class="container py-16"><h1>Blog</h1><p class="muted">Loading…</p></section>`;
   try{
-    const posts = await loadPostsIndex();
+    const topics = await loadBlogTopics();
     app.innerHTML = `
       <section class="container py-16">
         <h1>Blog</h1>
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); margin-top:1.25rem">
+          ${topics.map(t=>`
+            <div class="glass card">
+              ${t.cover ? `<img src="${t.cover}" alt="" style="width:100%;height:140px;object-fit:cover;border-radius:12px;margin:-.25rem 0 .5rem">` : ''}
+              <h3 style="margin-top:.25rem"><a href="#/blog/t/${t.slug}">${t.name}</a></h3>
+              <p class="muted">${t.count} ${t.count>1?'posts':'post'}</p>
+            </div>`).join('')}
+        </div>
+      </section>
+    `;
+    setHead('Shen — Blog Topics','Browse posts by topic.');
+  }catch(e){
+    app.innerHTML = `<section class="container py-16"><h1>Blog</h1><p class="muted">讀取失敗：${e.message}</p></section>`;
+  }
+}
+
+async function renderBlogTopic(topicSlug){
+  setActive('#/blog');
+  app.innerHTML = `<section class="container py-16"><h1>Loading…</h1></section>`;
+  try{
+    const [topics, posts] = await Promise.all([loadBlogTopics(), loadPostsByTopic(topicSlug)]);
+    const t = topics.find(x=>x.slug===topicSlug);
+    if(!t) throw new Error('主題不存在');
+    const items = posts.sort((a,b)=> new Date(b.date||0)-new Date(a.date||0));
+    app.innerHTML = `
+      <section class="container py-16">
+        <h1>${t.name}</h1>
         <div class="list mt-3">
-          ${posts.map(p=>`
+          ${items.map(p=>`
             <div class="item">
               <a class="prose" href="#/blog/${p.slug}"><h3 style="margin:0">${p.title}</h3></a>
               <div class="muted">${p.date ? new Date(p.date).toLocaleDateString() : ''}</div>
@@ -325,27 +373,12 @@ async function renderBlog(){
             </div>
           `).join('')}
         </div>
+        <div class="mt-3"><a class="btn" href="#/blog">← Back to Topics</a></div>
       </section>
     `;
-    setHead('Shen — Blog','Posts by Shen.');
+    setHead(`Shen — ${t.name}`, `${t.count} posts in ${t.name}.`);
   }catch(e){
-    // fallback：顯示內建示例文章
-    const posts = DATA.blogFallback;
-    app.innerHTML = `
-      <section class="container py-16">
-        <h1>Blog</h1>
-        <p class="muted">讀取索引失敗（${e.message}）。以下為示例文章。</p>
-        <div class="list mt-3">
-          ${posts.map(b=>`
-            <div class="item">
-              <a class="prose" href="#/blog/${b.slug}"><h3 style="margin:0">${b.title}</h3></a>
-              <div class="muted">${new Date(b.date).toLocaleDateString()}</div>
-              ${b.summary?`<p class="muted mt-1" style="max-width:72ch">${b.summary}</p>`:""}
-            </div>`).join('')}
-        </div>
-      </section>
-    `;
-    setHead('Shen — Blog (fallback)','Posts by Shen.');
+    app.innerHTML = `<section class="container py-16"><h1>Not found</h1><p class="muted">${e.message}</p><p><a class="btn" href="#/blog">← Back to Topics</a></p></section>`;
   }
 }
 
@@ -589,6 +622,9 @@ function router(){
   const h = location.hash || '#/';
   if(h==="#/" || h==="#") return renderHome();
 
+  if(h.startsWith('#/blog/t/'))  return renderBlogTopic(h.split('/')[3]); // 主題列表
+  if(h.startsWith('#/blog/'))    return renderPost(h.split('/')[2]);      // 單篇
+  if(h==="#/blog")               return renderBlog();                     // 主題卡片牆
   if(h.startsWith('#/blog/'))     return renderPost(h.split('/')[2]);
   if(h==="#/blog")                return renderBlog();
 
@@ -635,6 +671,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     console.error(e);
   }
 });
+
 
 
 
