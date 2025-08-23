@@ -289,7 +289,7 @@ async function renderCV(){
 
 /* ========= Blog loader ========= */
 // ---- Blog topics loader
-let __blogTopics = null, __postsIndex = null; // 你可能已定義 __postsIndex
+let __blogTopics = null;  // 只宣告 topics。__postsIndex 用既有那個
 
 async function loadBlogTopics(){
   if(__blogTopics) return __blogTopics;
@@ -299,13 +299,9 @@ async function loadBlogTopics(){
   return __blogTopics;
 }
 async function loadPostsByTopic(topicSlug){
-  // 確保 posts index 已載
-  if(!__postsIndex){
-    const r = await fetch(`blog.index.json?ts=${Date.now()}`, { cache: 'no-store' });
-    if(!r.ok) throw new Error('找不到 blog.index.json');
-    __postsIndex = await r.json();
-  }
-  return __postsIndex.filter(p => (p.topic && p.topic.slug) === topicSlug);
+  // 用原本的 posts 載入器，不處理 __postsIndex
+  const posts = await loadPostsIndex(); // ← 這是你原本就有的函式
+  return posts.filter(p => (p.topic && p.topic.slug) === topicSlug);
 }
 
 // ---- Blog loader
@@ -622,9 +618,10 @@ function router(){
   const h = location.hash || '#/';
   if(h==="#/" || h==="#") return renderHome();
 
-  if(h.startsWith('#/blog/t/'))  return renderBlogTopic(h.split('/')[3]); // 主題列表
+  if(h.startsWith('#/blog/t/'))  return renderBlogTopic(h.split('/')[3]); // 主題
   if(h.startsWith('#/blog/'))    return renderPost(h.split('/')[2]);      // 單篇
   if(h==="#/blog")               return renderBlog();                     // 主題卡片牆
+
   if(h.startsWith('#/blog/'))     return renderPost(h.split('/')[2]);
   if(h==="#/blog")                return renderBlog();
 
@@ -671,6 +668,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     console.error(e);
   }
 });
+
 
 
 
