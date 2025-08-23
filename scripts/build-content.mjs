@@ -114,13 +114,15 @@ async function buildIndex(dir, outName, mapItem){
 
 // --------- 建三個索引 ---------
 
-// Blog
+// --------- Blog ---------
 const blogBuild = await buildIndex(POSTS_DIR, 'blog.index.json', ({name, meta, body, nd})=>{
-  // 取主題：frontmatter topic > 目錄名稱 > 'misc'
   const dir = name.includes('/') ? name.split('/')[0] : null;
   const topicRaw = meta.topic || dir || 'misc';
+
   // 乾淨的 topic slug / 顯示名
-  const topicSlug = String(topicRaw).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'misc';
+  const topicSlug = String(topicRaw).toLowerCase()
+    .replace(/[^a-z0-9]+/g,'-')
+    .replace(/^-+|-+$/g,'') || 'misc';
   const topicName = meta.topic_name || (topicRaw[0].toUpperCase() + String(topicRaw).slice(1));
 
   return {
@@ -134,38 +136,35 @@ const blogBuild = await buildIndex(POSTS_DIR, 'blog.index.json', ({name, meta, b
   };
 });
 
-// Blog
-const blogItems = await buildIndex('posts', 'blog.index.json', ({name, meta, body, nd})=>{
-  const dir = name.includes('/') ? name.split('/')[0] : null;
-  const topicRaw = meta.topic || dir || 'misc';
-  const topicSlug = String(topicRaw).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'misc';
-  const topicName = meta.topic_name || (topicRaw[0].toUpperCase() + String(topicRaw).slice(1));
-  return {
-    slug: nd.slug,
-    file: name,
-    title: meta.title || nd.slug,
-    date:  meta.date || nd.date || null,
-    summary: meta.summary || firstTextLine(body),
-    topic: { slug: topicSlug, name: topicName },
-    cover: meta.cover || null
-  };
-});
-
-// 再產出 blog.topics.json
+// --------- Blog Topics ---------
 try {
+  const items = blogBuild.items;
   const topicsMap = new Map();
-  for (const p of blogItems) {
+
+  for (const p of items) {
     const key = p.topic?.slug || 'misc';
-    const cur = topicsMap.get(key) || { slug: key, name: p.topic?.name || 'Misc', count: 0, cover: null, latestDate: null };
+    const cur = topicsMap.get(key) || {
+      slug: key,
+      name: p.topic?.name || 'Misc',
+      count: 0,
+      cover: null,
+      latestDate: null
+    };
     cur.count += 1;
     if (!cur.cover && p.cover) cur.cover = p.cover;
-    if (!cur.latestDate || new Date(p.date||0) > new Date(cur.latestDate||0)) cur.latestDate = p.date;
+    if (!cur.latestDate || new Date(p.date||0) > new Date(cur.latestDate||0)) {
+      cur.latestDate = p.date;
+    }
     topicsMap.set(key, cur);
   }
+
   const topics = Array.from(topicsMap.values()).sort(
-    (a,b)=> (b.count - a.count) || (new Date(b.latestDate||0) - new Date(a.latestDate||0))
+    (a,b) => (b.count - a.count) ||
+             (new Date(b.latestDate||0) - new Date(a.latestDate||0))
   );
-  await writeFile(path.join(OUT_DIR,'blog.topics.json'), JSON.stringify(topics, null, 2), 'utf8');
+
+  await writeFile(path.join(OUT_DIR,'blog.topics.json'),
+                  JSON.stringify(topics, null, 2), 'utf8');
   console.log(`Wrote blog.topics.json with ${topics.length} topics`);
 } catch (e) {
   console.warn('Topics build skipped:', e.message);
@@ -231,5 +230,6 @@ try{
 }catch(e){
   console.warn('RSS skipped:', e.message);
 }
+
 
 
