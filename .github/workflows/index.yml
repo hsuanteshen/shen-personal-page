@@ -4,7 +4,7 @@ on:
     branches: [ main ]
     paths:
       - "posts/**"
-      - "scripts/build-index.mjs"
+      - "scripts/build-content.mjs"
       - ".github/workflows/index.yml"
 jobs:
   build:
