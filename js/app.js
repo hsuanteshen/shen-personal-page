@@ -87,7 +87,7 @@ function afterPostRender(){
   }
 }
 
-// ---- Demo DATA（CV/Projects/Papers 用到的靜態資料 & Blog fallback）
+// ---- Demo DATA（測試用的靜態資料 & Blog fallback）
 const DATA = {
   cv: {
     education: [
@@ -208,7 +208,7 @@ function renderHome(){
           <div class="glass glass-strong card" data-accent>
             <h1>Simplicitas.</h1>
             <p class="muted mt-2" style="max-width:66ch">
-              Hello, this is Shen. (haven't figured out what to write here yet)
+              Hello, this is Shen, and this is my personal page.
             </p>
             <div class="mt-6">
               <a class="btn primary" href="#/projects">Explore Projects</a>
@@ -220,11 +220,11 @@ function renderHome(){
             <h3>Highlights</h3>
             <div class="list mt-3">
               <div class="item">
-                <a href="#/blog/hello-world">Blog — Hybrid = Editorial × Cinematic</a>
-                <div class="muted mt-1">2025-08-18</div>
+                <a href="#/blog/hello-world">Blog — Testing function</a>
+                <div class="muted mt-1">2025-08-24</div>
               </div>
-              <div class="item"><a href="#/papers">Paper — Schur-type Partition</a></div>
-              <div class="item"><a href="#/projects">Project — Gnosis Series</a></div>
+              <div class="item"><a href="#/papers">Paper — Testing function</a></div>
+              <div class="item"><a href="#/projects">Project — Project Test</a></div>
             </div>
           </div>
         </div>
@@ -239,8 +239,8 @@ function renderHome(){
             <div class="muted">Metrics</div>
             <div class="kpis mt-2">
               <div class="kpi">
-                <div class="num">G1–G5</div>
-                <div class="muted" style="font-size:.85rem">Gnosis Priority</div>
+                <div class="num">Test</div>
+                <div class="muted" style="font-size:.85rem">testing function</div>
               </div>
               <div class="kpi">
                 <div class="num">CV</div>
@@ -256,7 +256,7 @@ function renderHome(){
           <div class="glass-soft card">
             <div class="muted">Upcoming</div>
             <ul class="mt-2" style="padding-left:1.1rem; margin:0">
-              <li>Polish G1 paper intro</li>
+              <li>Polish Page</li>
               <li>Projects page filters</li>
               <li>CV → PDF export</li>
             </ul>
@@ -668,6 +668,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     console.error(e);
   }
 });
+
 
 
 
